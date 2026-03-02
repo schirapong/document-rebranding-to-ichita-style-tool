@@ -46,7 +46,7 @@ for _fd in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts"]:
 # ── Paths ────────────────────────────────────────────────────────────────────
 
 SOURCE = "/Users/chirapongsakullachat/Documents/data/" \
-         "SKT-Pilot-Report-Nuosep-HP-revised 5.docx"
+         "SKT-Pilot-Report-Nuosep-HP-revised 5(1).docx"
 OUTPUT = "/Users/chirapongsakullachat/Documents/data/" \
          "SKT-Pilot-Report-Nuosep-HP-Ichita.docx"
 LOGO   = "/Users/chirapongsakullachat/Documents/my-project/ichita brand ID/" \
@@ -105,9 +105,13 @@ def set_font(run_elem, font_name=None, size_pt=None, color_hex=None, bold=None):
         rf.set(qn(attr), font_name)
 
     # ── Size (half-points) ──
+    # Latin (Aeonik) renders visually larger than Thai at the same pt size,
+    # so w:sz (Latin) is reduced by LATIN_OFFSET to balance them.
+    LATIN_OFFSET = 1.5  # pt smaller for English
     if size_pt is not None:
-        hp = str(int(size_pt * 2))
-        for tag in ('w:sz', 'w:szCs'):
+        hp_latin = str(int((size_pt - LATIN_OFFSET) * 2))
+        hp_cs    = str(int(size_pt * 2))
+        for tag, hp in (('w:sz', hp_latin), ('w:szCs', hp_cs)):
             el = rPr.find(qn(tag))
             if el is not None:
                 el.set(qn('w:val'), hp)
@@ -707,31 +711,30 @@ def redesign_title_page(body):
                 to_remove.append(elem)
                 break
 
-        # Title and subtitle
-        if style_id == STY_TITLE:
+        # Title and subtitle — detect by style OR by text content
+        if style_id == STY_TITLE or (not title_text and 'รายงานผลการทดสอบ' in text):
             title_text = text
             to_remove.append(elem)
-        elif style_id == STY_SUBTITLE:
+        elif style_id == STY_SUBTITLE or (not subtitle_text and 'ระบบกำจัดสี' in text):
             subtitle_text = text
             to_remove.append(elem)
 
-    # Also remove remaining empty paragraphs before content
+    # Also remove remaining empty paragraphs before first Topic heading
     for elem in list(body):
         tag = elem.tag.split('}')[-1]
         if tag != 'p':
             continue
         text = get_text(elem).strip()
         style_id = get_style_id(elem)
-        if style_id in (STY_TITLE, STY_SUBTITLE):
-            continue  # already handled
         if elem in to_remove:
             continue
-        # Stop at first content paragraph (topic heading or body text)
-        if style_id == STY_TOPIC or (text and 'ชื่อ' not in text
-                                     and 'ลูกค้า' not in text
-                                     and 'วันที่' not in text
-                                     and 'หมายเหตุ' not in text):
+        # Stop at first Topic heading (real content starts)
+        if style_id == STY_TOPIC:
             break
+        # Skip metadata / title / subtitle (already handled)
+        if any(k in text for k in ['ชื่อ', 'ลูกค้า', 'วันที่', 'หมายเหตุ',
+                                     'รายงานผล', 'ระบบกำจัดสี']):
+            continue
         if not text and not has_images(elem):
             pPr = elem.find(qn('w:pPr'))
             if pPr is None or pPr.find(qn('w:sectPr')) is None:
@@ -959,7 +962,7 @@ def rebrand():
             if pb is not None:
                 pPr.remove(pb)
 
-    # Add pageBreakBefore to: appendix C/D headings, table captions (ตารางที่)
+    # Add pageBreakBefore to keep headings/captions with their tables
     # NOT appendix A/B — A flows from content; B follows section break
     children = list(dst_body)
     for i, child in enumerate(children):
@@ -967,22 +970,27 @@ def rebrand():
             continue
         text = get_text(child).strip()
 
-        needs_pb = False
-        # Appendix C heading — force new page so heading stays with table
-        # (D flows naturally after C; B follows section break)
-        if re.match(r'^C\.', text):
-            needs_pb = True
-        # Table captions followed by a table — keep caption with table body
-        if text.startswith('ตารางที่'):
-            # Check if next sibling is a table
-            if i + 1 < len(children) and children[i + 1].tag == qn('w:tbl'):
-                needs_pb = True
+        target = None  # element to receive pageBreakBefore
 
-        if needs_pb:
-            pPr = ensure_pPr(child)
-            pPr.append(parse_xml(
-                f'<w:pageBreakBefore {nsdecls("w")}/>'))
-            print(f"  PB_BEFORE: {text[:60]}")
+        # "Appendix" section heading — start on new page with A.
+        if text.lower() == 'appendix':
+            target = child
+
+        # Appendix C heading — force new page so heading stays with table
+        if re.match(r'^C\.', text):
+            target = child
+
+        # Table captions: no forced page break — keepWithNext on caption
+        # and heading above naturally keeps them together with the table
+
+        if target is not None:
+            pPr = ensure_pPr(target)
+            # Don't add duplicate
+            if pPr.find(qn('w:pageBreakBefore')) is None:
+                pPr.append(parse_xml(
+                    f'<w:pageBreakBefore {nsdecls("w")}/>'))
+                t = get_text(target).strip()
+                print(f"  PB_BEFORE: {t[:60]}")
 
     # ── Document default style ──
     style = dst_doc.styles['Normal']
