@@ -1,0 +1,1018 @@
+#!/usr/bin/env python3
+"""
+Rebrand SKT Pilot Report (Nuosep HP) to Ichita brand identity.
+
+Reads the source DOCX and creates an Ichita-branded version:
+- ICHITA logo in header with blue accent line
+- Brand fonts (Aeonik → Avenir Next → Calibri)
+- Brand colors (#2978FF primary, #263338 headings)
+- Dark table headers (#263338), alternating row shading (#EFF2F3)
+- Preserves all content, tables (merged cells), images, sections
+"""
+
+import os
+import re
+import copy
+from docx import Document
+from docx.shared import Pt, Inches, Cm, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn, nsdecls
+from docx.oxml import parse_xml
+
+
+# ── Ichita Brand Colours ─────────────────────────────────────────────────────
+
+ICHITA_BLUE       = RGBColor(0x29, 0x78, 0xFF)
+ICHITA_BLUE_GREY3 = RGBColor(0x26, 0x33, 0x38)
+
+HEX_BLUE      = "2978FF"
+HEX_DARK      = "263338"
+HEX_TABLE_HDR = "263338"
+HEX_TABLE_ALT = "EFF2F3"
+HEX_BORDER    = "A0B0B8"
+HEX_GREY2     = "788F9C"
+
+
+# ── Font Detection ───────────────────────────────────────────────────────────
+
+BRAND_FONT = "Avenir Next"
+for _fd in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts"]:
+    if os.path.isdir(_fd):
+        if any("aeonik" in f.lower() for f in os.listdir(_fd)):
+            BRAND_FONT = "Aeonik"
+            break
+
+
+# ── Paths ────────────────────────────────────────────────────────────────────
+
+SOURCE = "/Users/chirapongsakullachat/Documents/data/" \
+         "SKT-Pilot-Report-Nuosep-HP-revised 5.docx"
+OUTPUT = "/Users/chirapongsakullachat/Documents/data/" \
+         "SKT-Pilot-Report-Nuosep-HP-Ichita.docx"
+LOGO   = "/Users/chirapongsakullachat/Documents/my-project/ichita brand ID/" \
+         "ICHITA BRAND BOOK AND COMPANY PROFILE/LogoV2 3/Digital/PNG/" \
+         "Wordmark/Ichita_Logo-05.png"
+
+# Source document style IDs
+STY_TITLE    = "0TitleTHSaraban"
+STY_SUBTITLE = "0SubTitleTHSaraban"
+STY_TOPIC    = "1Topic"
+
+
+# ── XML Helpers ──────────────────────────────────────────────────────────────
+
+def get_style_id(p_elem):
+    """Get the w:pStyle val from a paragraph element."""
+    pPr = p_elem.find(qn('w:pPr'))
+    if pPr is not None:
+        ps = pPr.find(qn('w:pStyle'))
+        if ps is not None:
+            return ps.get(qn('w:val'), '')
+    return ''
+
+
+def get_text(p_elem):
+    """Get visible text from direct-child w:r/w:t only (avoids MC duplication)."""
+    texts = []
+    for r in p_elem.findall(qn('w:r')):
+        for t in r.findall(qn('w:t')):
+            if t.text:
+                texts.append(t.text)
+    return ''.join(texts)
+
+
+def has_images(elem):
+    """Check if element contains embedded images (a:blip)."""
+    return bool(elem.findall('.//' + qn('a:blip')))
+
+
+def set_font(run_elem, font_name=None, size_pt=None, color_hex=None, bold=None):
+    """Set font properties on a w:r element at the XML level."""
+    if font_name is None:
+        font_name = BRAND_FONT
+
+    rPr = run_elem.find(qn('w:rPr'))
+    if rPr is None:
+        rPr = parse_xml(f'<w:rPr {nsdecls("w")}/>')
+        run_elem.insert(0, rPr)
+
+    # ── Font name ──
+    rf = rPr.find(qn('w:rFonts'))
+    if rf is None:
+        rf = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
+        rPr.insert(0, rf)
+    for attr in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
+        rf.set(qn(attr), font_name)
+
+    # ── Size (half-points) ──
+    if size_pt is not None:
+        hp = str(int(size_pt * 2))
+        for tag in ('w:sz', 'w:szCs'):
+            el = rPr.find(qn(tag))
+            if el is not None:
+                el.set(qn('w:val'), hp)
+            else:
+                new_el = parse_xml(f'<{tag} {nsdecls("w")} w:val="{hp}"/>')
+                rPr.append(new_el)
+
+    # ── Colour ──
+    if color_hex is not None:
+        el = rPr.find(qn('w:color'))
+        if el is not None:
+            el.set(qn('w:val'), color_hex)
+        else:
+            el = parse_xml(
+                f'<w:color {nsdecls("w")} w:val="{color_hex}"/>')
+            rPr.append(el)
+
+    # ── Bold ──
+    if bold is not None:
+        for tag in ('w:b', 'w:bCs'):
+            el = rPr.find(qn(tag))
+            if bold:
+                if el is None:
+                    rPr.append(parse_xml(f'<{tag} {nsdecls("w")}/>'))
+            else:
+                if el is not None:
+                    rPr.remove(el)
+
+
+def set_cell_shading(tc_elem, color_hex):
+    """Apply background shading to a table cell XML element."""
+    tcPr = tc_elem.find(qn('w:tcPr'))
+    if tcPr is None:
+        tcPr = parse_xml(f'<w:tcPr {nsdecls("w")}/>')
+        tc_elem.insert(0, tcPr)
+    existing = tcPr.find(qn('w:shd'))
+    if existing is not None:
+        tcPr.remove(existing)
+    shading = parse_xml(
+        f'<w:shd {nsdecls("w")} w:fill="{color_hex}" w:val="clear"/>')
+    tcPr.append(shading)
+
+
+def ensure_pPr(p_elem):
+    """Ensure paragraph has a pPr element; return it."""
+    pPr = p_elem.find(qn('w:pPr'))
+    if pPr is None:
+        pPr = parse_xml(f'<w:pPr {nsdecls("w")}/>')
+        p_elem.insert(0, pPr)
+    return pPr
+
+
+def add_left_accent(p_elem, color="2978FF", sz="24", space="6"):
+    """Add a left blue accent bar to a paragraph."""
+    pPr = ensure_pPr(p_elem)
+    old = pPr.find(qn('w:pBdr'))
+    if old is not None:
+        pPr.remove(old)
+    pBdr = parse_xml(
+        f'<w:pBdr {nsdecls("w")}>'
+        f'  <w:left w:val="single" w:sz="{sz}" w:space="{space}"'
+        f'         w:color="{color}"/>'
+        f'</w:pBdr>')
+    pPr.append(pBdr)
+
+
+def add_bottom_band(p_elem, color="2978FF", sz="24"):
+    """Add a thick bottom blue band below a paragraph (title decoration)."""
+    pPr = ensure_pPr(p_elem)
+    old = pPr.find(qn('w:pBdr'))
+    if old is not None:
+        pPr.remove(old)
+    pBdr = parse_xml(
+        f'<w:pBdr {nsdecls("w")}>'
+        f'  <w:bottom w:val="single" w:sz="{sz}" w:space="1"'
+        f'            w:color="{color}"/>'
+        f'</w:pBdr>')
+    pPr.append(pBdr)
+
+
+def set_alignment(p_elem, val='center'):
+    """Set paragraph alignment (center, left, right, both)."""
+    pPr = ensure_pPr(p_elem)
+    jc = pPr.find(qn('w:jc'))
+    if jc is None:
+        jc = parse_xml(f'<w:jc {nsdecls("w")}/>')
+        pPr.append(jc)
+    jc.set(qn('w:val'), val)
+
+
+# ── Heading Detection ────────────────────────────────────────────────────────
+
+def detect_heading(text):
+    """Detect heading type from Normal-styled paragraph text."""
+    text = text.strip()
+    if not text:
+        return None
+
+    # Figure/table captions
+    if text.startswith('รูปที่') or text.startswith('ตารางที่'):
+        return 'caption'
+
+    # "Appendix" heading
+    if text.lower() == 'appendix':
+        return 'section'
+
+    # Appendix sub-headings: A. ..., B. ..., C. ..., D. ...
+    if re.match(r'^[A-D]\.?\s*\S', text) and len(text) < 80:
+        return 'subsection'
+
+    # Section headings: 1. ..., 2. ..., etc. (short text)
+    if re.match(r'^\d+\.\s+\S', text) and len(text) < 80:
+        return 'section'
+
+    # Subsection headings: 3.1 ..., 3.2 ..., etc. (short text)
+    if re.match(r'^\d+\.\d+\s+\S', text) and len(text) < 80:
+        return 'subsection'
+
+    return None
+
+
+# ── Paragraph Styling ────────────────────────────────────────────────────────
+
+def style_runs(p_elem, size_pt=10.5, color_hex="263338", bold=None):
+    """Apply brand font to all text runs in a paragraph (skip image runs)."""
+    for run in p_elem.findall('.//' + qn('w:r')):
+        if has_images(run):
+            continue
+        set_font(run, size_pt=size_pt, color_hex=color_hex, bold=bold)
+
+
+def style_paragraph(p_elem, style_id, text):
+    """Apply Ichita brand styling to a paragraph."""
+
+    # ── Title ──
+    if style_id == STY_TITLE:
+        style_runs(p_elem, size_pt=26, color_hex=HEX_DARK, bold=True)
+        set_alignment(p_elem, 'center')
+        add_bottom_band(p_elem)
+        return
+
+    # ── Subtitle ──
+    if style_id == STY_SUBTITLE:
+        style_runs(p_elem, size_pt=15, color_hex=HEX_GREY2)
+        set_alignment(p_elem, 'center')
+        return
+
+    # ── Topic (H2 from source template) ──
+    if style_id == STY_TOPIC:
+        style_runs(p_elem, size_pt=15, color_hex=HEX_DARK, bold=True)
+        add_left_accent(p_elem)
+        pPr = ensure_pPr(p_elem)
+        pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+        return
+
+    # ── Detect heading by text content (Normal-styled headings) ──
+    heading = detect_heading(text)
+
+    if heading == 'section':
+        style_runs(p_elem, size_pt=14, color_hex=HEX_DARK, bold=True)
+        add_left_accent(p_elem)
+        pPr = ensure_pPr(p_elem)
+        pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+    elif heading == 'subsection':
+        style_runs(p_elem, size_pt=12, color_hex=HEX_BLUE, bold=True)
+        pPr = ensure_pPr(p_elem)
+        pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+    elif heading == 'caption':
+        style_runs(p_elem, size_pt=10.5, color_hex=HEX_GREY2)
+        set_alignment(p_elem, 'center')
+        pPr = ensure_pPr(p_elem)
+        pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+
+    else:
+        # Normal body text (12pt — one size up for Thai readability)
+        style_runs(p_elem, size_pt=12, color_hex=HEX_DARK)
+
+
+# ── Table Styling ────────────────────────────────────────────────────────────
+
+def style_table(tbl_elem):
+    """Apply Ichita brand styling to a table XML element.
+
+    Handles: dark header rows, alternating data row shading, brand borders,
+    multi-row headers (vMerge), and image-only tables (no header styling).
+    """
+    # ── Table-level borders ──
+    tblPr = tbl_elem.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
+        tbl_elem.insert(0, tblPr)
+
+    old_borders = tblPr.find(qn('w:tblBorders'))
+    if old_borders is not None:
+        tblPr.remove(old_borders)
+
+    borders = parse_xml(
+        f'<w:tblBorders {nsdecls("w")}>'
+        f'  <w:top w:val="single" w:sz="4" w:space="0"'
+        f'         w:color="{HEX_BORDER}"/>'
+        f'  <w:left w:val="single" w:sz="4" w:space="0"'
+        f'          w:color="{HEX_BORDER}"/>'
+        f'  <w:bottom w:val="single" w:sz="4" w:space="0"'
+        f'             w:color="{HEX_BORDER}"/>'
+        f'  <w:right w:val="single" w:sz="4" w:space="0"'
+        f'           w:color="{HEX_BORDER}"/>'
+        f'  <w:insideH w:val="single" w:sz="4" w:space="0"'
+        f'              w:color="{HEX_BORDER}"/>'
+        f'  <w:insideV w:val="single" w:sz="4" w:space="0"'
+        f'              w:color="{HEX_BORDER}"/>'
+        f'</w:tblBorders>')
+    tblPr.append(borders)
+
+    rows = tbl_elem.findall(qn('w:tr'))
+    if not rows:
+        return
+
+    # ── Detect image-only table (photo grid — skip header styling) ──
+    r0_cells = rows[0].findall(qn('w:tc'))
+    is_image_table = (
+        r0_cells and all(has_images(tc) for tc in r0_cells)
+    )
+
+    # ── Detect multi-row header (vMerge=restart in row 0) ──
+    header_rows = 1
+    if not is_image_table:
+        for tc in r0_cells:
+            tcPr = tc.find(qn('w:tcPr'))
+            if tcPr is not None:
+                vm = tcPr.find(qn('w:vMerge'))
+                if vm is not None and vm.get(qn('w:val')) == 'restart':
+                    header_rows = 2
+                    break
+
+    # ── Detect wide tables (>10 cols) — use smaller font ──
+    num_cols = len(rows[0].findall(qn('w:tc'))) if rows else 0
+    font_sz = 8 if num_cols > 10 else 10
+    hdr_sz = 8 if num_cols > 10 else 10
+
+    # ── Style each row ──
+    for ri, tr in enumerate(rows):
+        # For wide tables, set row height to "atLeast" so text isn't clipped
+        if num_cols > 10:
+            trPr = tr.find(qn('w:trPr'))
+            if trPr is None:
+                trPr = parse_xml(f'<w:trPr {nsdecls("w")}/>')
+                tr.insert(0, trPr)
+            th = trPr.find(qn('w:trHeight'))
+            if th is not None:
+                th.set(qn('w:hRule'), 'atLeast')
+                # Ensure minimum height for Thai text
+                cur = int(th.get(qn('w:val'), '0'))
+                if cur < 320:
+                    th.set(qn('w:val'), '320')
+            else:
+                trPr.append(parse_xml(
+                    f'<w:trHeight {nsdecls("w")}'
+                    f' w:val="320" w:hRule="atLeast"/>'))
+
+        for tc in tr.findall(qn('w:tc')):
+            if is_image_table:
+                # Image table: brand font only, no header/alt styling
+                for run in tc.findall('.//' + qn('w:r')):
+                    if not has_images(run):
+                        set_font(run, size_pt=font_sz, color_hex=HEX_DARK)
+
+            elif ri < header_rows:
+                # Header row(s): dark bg, white bold text
+                set_cell_shading(tc, HEX_TABLE_HDR)
+                for run in tc.findall('.//' + qn('w:r')):
+                    if not has_images(run):
+                        set_font(run, size_pt=hdr_sz, color_hex="FFFFFF",
+                                 bold=True)
+
+            else:
+                # Data rows: alternating shading, clear source colors
+                data_idx = ri - header_rows
+                if data_idx % 2 == 1:
+                    set_cell_shading(tc, HEX_TABLE_ALT)
+                else:
+                    set_cell_shading(tc, "FFFFFF")
+                for run in tc.findall('.//' + qn('w:r')):
+                    if not has_images(run):
+                        set_font(run, size_pt=font_sz, color_hex=HEX_DARK)
+
+
+def squeeze_wide_tables(body, usable_twips):
+    """Scale tables that exceed usable_twips to fit within the page width.
+
+    Proportionally reduces gridCol widths and tcW cell widths so the table
+    fits without losing column proportions or content integrity.
+    """
+    for tbl in body.iter(qn('w:tbl')):
+        grid = tbl.find(qn('w:tblGrid'))
+        if grid is None:
+            continue
+        grid_cols = grid.findall(qn('w:gridCol'))
+        gc_widths = []
+        for gc in grid_cols:
+            w = gc.get(qn('w:w'))
+            gc_widths.append(int(w) if w else 0)
+        total = sum(gc_widths)
+        if total <= usable_twips or total == 0:
+            continue
+
+        # Scale factor
+        factor = usable_twips / total
+        print(f"  Squeeze table: {total} → {usable_twips} twips "
+              f"(factor {factor:.3f}, {len(grid_cols)} grid cols)")
+
+        # Scale grid columns
+        for gc, old_w in zip(grid_cols, gc_widths):
+            gc.set(qn('w:w'), str(int(old_w * factor)))
+
+        # Scale tblW if absolute
+        tblPr = tbl.find(qn('w:tblPr'))
+        if tblPr is not None:
+            tblW = tblPr.find(qn('w:tblW'))
+            if tblW is not None:
+                wtype = tblW.get(qn('w:type'), 'auto')
+                if wtype == 'dxa':
+                    old_tw = int(tblW.get(qn('w:w'), '0'))
+                    tblW.set(qn('w:w'), str(int(old_tw * factor)))
+
+        # Scale cell widths in every row
+        for tr in tbl.findall(qn('w:tr')):
+            for tc in tr.findall(qn('w:tc')):
+                tcPr = tc.find(qn('w:tcPr'))
+                if tcPr is None:
+                    continue
+                tcW = tcPr.find(qn('w:tcW'))
+                if tcW is not None:
+                    wtype = tcW.get(qn('w:type'), 'dxa')
+                    if wtype == 'dxa':
+                        old_cw = int(tcW.get(qn('w:w'), '0'))
+                        tcW.set(qn('w:w'), str(int(old_cw * factor)))
+
+
+# ── Image Relationship Copy ──────────────────────────────────────────────────
+
+def copy_image_rels(src_part, dst_part, elem):
+    """Copy image relationships from source to destination for all blips."""
+    for blip in elem.findall('.//' + qn('a:blip')):
+        rId = blip.get(qn('r:embed'))
+        if rId and rId in src_part.rels:
+            rel = src_part.rels[rId]
+            new_rId = dst_part.relate_to(rel.target_part, rel.reltype)
+            blip.set(qn('r:embed'), new_rId)
+
+
+# ── Header / Footer ─────────────────────────────────────────────────────────
+
+def add_header_footer(doc, logo_path):
+    """Add ICHITA logo header and clean footer to all sections."""
+    for section in doc.sections:
+        # ── Header ──
+        header = section.header
+        header.is_linked_to_previous = False
+        for p in header.paragraphs:
+            p.clear()
+
+        hp = (header.paragraphs[0]
+              if header.paragraphs else header.add_paragraph())
+        hp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        hp.paragraph_format.space_after = Pt(4)
+
+        if os.path.exists(logo_path):
+            run = hp.add_run()
+            run.add_picture(logo_path, width=Inches(1.5))
+        else:
+            run = hp.add_run("ICHITA\u2122")
+            run.font.name = BRAND_FONT
+            run.font.size = Pt(16)
+            run.font.bold = True
+            run.font.color.rgb = ICHITA_BLUE_GREY3
+
+        # Blue accent line under header
+        pPr = hp._p.get_or_add_pPr()
+        pBdr = parse_xml(
+            f'<w:pBdr {nsdecls("w")}>'
+            f'  <w:bottom w:val="single" w:sz="6" w:space="4"'
+            f'            w:color="{HEX_BLUE}"/>'
+            f'</w:pBdr>')
+        pPr.append(pBdr)
+
+        # ── Footer (clear) ──
+        footer = section.footer
+        footer.is_linked_to_previous = False
+        for p in footer.paragraphs:
+            p.clear()
+
+
+# ── Cleanup ──────────────────────────────────────────────────────────────────
+
+def cleanup_empty_space(body):
+    """Remove title-page logo, 'ICHITA's solutions', and excess empty paras.
+
+    Walks direct children of body. Removes:
+    - The big ICHITA circle logo paragraph (image-only, before the title)
+    - The "ICHITA's solutions" tagline paragraph
+    - Consecutive empty paragraphs beyond the first in any run
+    """
+    found_title = False
+    removed = 0
+
+    # Collect direct-child paragraphs (not inside tables/sectPr)
+    children = list(body)
+    prev_was_empty = False
+
+    for elem in children:
+        tag = elem.tag.split('}')[-1]
+        if tag != 'p':
+            prev_was_empty = False
+            continue
+
+        text = get_text(elem).strip()
+        has_img = has_images(elem)
+        style_id = get_style_id(elem)
+
+        # Track when we've passed the title
+        if style_id == STY_TITLE:
+            found_title = True
+
+        # Remove big logo image paragraph (image-only, before title)
+        if not found_title and has_img and not text:
+            body.remove(elem)
+            removed += 1
+            continue
+
+        # Remove "ICHITA's solutions" tagline
+        if "ICHITA" in text and "solution" in text.lower():
+            body.remove(elem)
+            removed += 1
+            continue
+
+        # Collapse consecutive empty paragraphs (keep max 1)
+        is_empty = (not text and not has_img)
+        # Don't remove paragraphs that carry a section break
+        has_sect = False
+        pPr = elem.find(qn('w:pPr'))
+        if pPr is not None and pPr.find(qn('w:sectPr')) is not None:
+            has_sect = True
+
+        if is_empty and not has_sect:
+            if prev_was_empty:
+                body.remove(elem)
+                removed += 1
+                continue
+            prev_was_empty = True
+        else:
+            prev_was_empty = False
+
+    print(f"  Cleanup: removed {removed} empty/logo paragraphs")
+
+
+# ── Title Page Redesign ──────────────────────────────────────────────────────
+
+def make_para(text="", size_pt=12, color_hex=HEX_DARK, bold=False,
+              align='left', space_before=0, space_after=0):
+    """Create a new w:p element with formatted text and spacing."""
+    p = parse_xml(f'<w:p {nsdecls("w")}/>')
+
+    if text:
+        r = parse_xml(f'<w:r {nsdecls("w")}/>')
+        t = parse_xml(f'<w:t {nsdecls("w")}/>')
+        t.text = text
+        t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+        r.append(t)
+        set_font(r, size_pt=size_pt, color_hex=color_hex, bold=bold)
+        p.append(r)
+
+    pPr = ensure_pPr(p)
+    if align != 'left':
+        pPr.append(parse_xml(
+            f'<w:jc {nsdecls("w")} w:val="{align}"/>'))
+    sb = str(int(space_before * 20))   # pt → twips
+    sa = str(int(space_after * 20))
+    pPr.append(parse_xml(
+        f'<w:spacing {nsdecls("w")} w:before="{sb}" w:after="{sa}"/>'))
+    return p
+
+
+def create_meta_table(items):
+    """Build a clean 2-column metadata table (label | value).
+
+    Horizontal dividers only, no vertical lines — modern, professional look.
+    """
+    rows_xml = ""
+    for label, value in items:
+        rows_xml += (
+            '<w:tr>'
+            '  <w:tc>'
+            '    <w:tcPr><w:tcW w:w="2600" w:type="dxa"/></w:tcPr>'
+            '    <w:p><w:pPr>'
+            '      <w:spacing w:before="50" w:after="50"/>'
+            '    </w:pPr>'
+            '    <w:r><w:rPr>'
+            f'      <w:rFonts w:ascii="{BRAND_FONT}" w:hAnsi="{BRAND_FONT}"'
+            f'               w:cs="{BRAND_FONT}" w:eastAsia="{BRAND_FONT}"/>'
+            '      <w:sz w:val="22"/><w:szCs w:val="22"/>'
+            f'      <w:color w:val="{HEX_BLUE}"/>'
+            '      <w:b/><w:bCs/>'
+            f'    </w:rPr><w:t xml:space="preserve">{label}</w:t></w:r>'
+            '    </w:p>'
+            '  </w:tc>'
+            '  <w:tc>'
+            '    <w:tcPr><w:tcW w:w="7400" w:type="dxa"/></w:tcPr>'
+            '    <w:p><w:pPr>'
+            '      <w:spacing w:before="50" w:after="50"/>'
+            '    </w:pPr>'
+            '    <w:r><w:rPr>'
+            f'      <w:rFonts w:ascii="{BRAND_FONT}" w:hAnsi="{BRAND_FONT}"'
+            f'               w:cs="{BRAND_FONT}" w:eastAsia="{BRAND_FONT}"/>'
+            '      <w:sz w:val="22"/><w:szCs w:val="22"/>'
+            f'      <w:color w:val="{HEX_DARK}"/>'
+            f'    </w:rPr><w:t xml:space="preserve">{value}</w:t></w:r>'
+            '    </w:p>'
+            '  </w:tc>'
+            '</w:tr>'
+        )
+
+    tbl_xml = (
+        f'<w:tbl {nsdecls("w")}>'
+        '  <w:tblPr>'
+        '    <w:tblW w:w="5000" w:type="pct"/>'
+        '    <w:jc w:val="center"/>'
+        '    <w:tblBorders>'
+        f'      <w:top w:val="single" w:sz="6" w:space="0"'
+        f'            w:color="{HEX_BLUE}"/>'
+        f'      <w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f'      <w:bottom w:val="single" w:sz="6" w:space="0"'
+        f'               w:color="{HEX_BLUE}"/>'
+        f'      <w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+        f'      <w:insideH w:val="single" w:sz="2" w:space="0"'
+        f'                 w:color="{HEX_BORDER}"/>'
+        f'      <w:insideV w:val="none" w:sz="0" w:space="0"'
+        f'                 w:color="auto"/>'
+        '    </w:tblBorders>'
+        '    <w:tblCellMar>'
+        '      <w:top w:w="60" w:type="dxa"/>'
+        '      <w:left w:w="120" w:type="dxa"/>'
+        '      <w:bottom w:w="60" w:type="dxa"/>'
+        '      <w:right w:w="120" w:type="dxa"/>'
+        '    </w:tblCellMar>'
+        '  </w:tblPr>'
+        '  <w:tblGrid>'
+        '    <w:gridCol w:w="2600"/>'
+        '    <w:gridCol w:w="7400"/>'
+        '  </w:tblGrid>'
+        f'  {rows_xml}'
+        '</w:tbl>'
+    )
+    return parse_xml(tbl_xml)
+
+
+def redesign_title_page(body):
+    """Replace old title page with a professional Ichita-branded cover.
+
+    Extracts metadata (strips English translations), title, and subtitle.
+    Builds: Title → blue band → subtitle → metadata table → section break.
+    """
+    metadata = {}
+    title_text = ""
+    subtitle_text = ""
+    sect_break_xml = None
+    to_remove = []
+
+    # ── Extract data from existing elements ──
+    for elem in list(body):
+        tag = elem.tag.split('}')[-1]
+        if tag != 'p':
+            continue
+
+        text = get_text(elem).strip()
+        style_id = get_style_id(elem)
+
+        # Metadata fields — extract value, strip (English Translation)
+        for thai_key, dict_key in [
+            ('ชื่อโครงการ', 'project'),
+            ('ชื่องาน', 'case'),
+            ('ลูกค้า', 'customer'),
+            ('วันที่จัดทำ', 'date'),
+            ('หมายเหตุ', 'notes'),
+        ]:
+            if thai_key in text:
+                clean = re.sub(r'\s*\([^)]*\)\s*', ' ', text)
+                _, _, value = clean.partition(':')
+                metadata[dict_key] = value.strip()
+
+                # Preserve section break if this paragraph has one
+                pPr = elem.find(qn('w:pPr'))
+                if pPr is not None:
+                    sect = pPr.find(qn('w:sectPr'))
+                    if sect is not None:
+                        sect_break_xml = copy.deepcopy(sect)
+
+                to_remove.append(elem)
+                break
+
+        # Title and subtitle
+        if style_id == STY_TITLE:
+            title_text = text
+            to_remove.append(elem)
+        elif style_id == STY_SUBTITLE:
+            subtitle_text = text
+            to_remove.append(elem)
+
+    # Also remove remaining empty paragraphs before content
+    for elem in list(body):
+        tag = elem.tag.split('}')[-1]
+        if tag != 'p':
+            continue
+        text = get_text(elem).strip()
+        style_id = get_style_id(elem)
+        if style_id in (STY_TITLE, STY_SUBTITLE):
+            continue  # already handled
+        if elem in to_remove:
+            continue
+        # Stop at first content paragraph (topic heading or body text)
+        if style_id == STY_TOPIC or (text and 'ชื่อ' not in text
+                                     and 'ลูกค้า' not in text
+                                     and 'วันที่' not in text
+                                     and 'หมายเหตุ' not in text):
+            break
+        if not text and not has_images(elem):
+            pPr = elem.find(qn('w:pPr'))
+            if pPr is None or pPr.find(qn('w:sectPr')) is None:
+                to_remove.append(elem)
+
+    # ── Remove old elements ──
+    for elem in to_remove:
+        if elem.getparent() is body:
+            body.remove(elem)
+
+    # ── Find insertion point (first remaining content element) ──
+    insert_before = None
+    for child in body:
+        if child.tag != qn('w:sectPr'):
+            insert_before = child
+            break
+
+    def insert(elem):
+        if insert_before is not None:
+            insert_before.addprevious(elem)
+        else:
+            final = body.find(qn('w:sectPr'))
+            if final is not None:
+                final.addprevious(elem)
+            else:
+                body.append(elem)
+
+    # ── Build new title page ──
+
+    # 1. Top spacer
+    insert(make_para(space_after=80))
+
+    # 2. Title (very large, centered, bold)
+    insert(make_para(title_text, size_pt=36, color_hex=HEX_DARK,
+                     bold=True, align='center', space_after=10))
+
+    # 3. Blue accent band
+    band = make_para(space_before=0, space_after=14)
+    add_bottom_band(band, color=HEX_BLUE, sz="24")
+    insert(band)
+
+    # 4. Subtitle (centered, grey)
+    insert(make_para(subtitle_text, size_pt=16, color_hex=HEX_GREY2,
+                     align='center', space_before=8, space_after=36))
+
+    # 5. Metadata table
+    meta_items = [
+        ('ชื่อโครงการ',       metadata.get('project', '')),
+        ('ชื่องาน',           metadata.get('case', '')),
+        ('ลูกค้า',            metadata.get('customer', '')),
+        ('วันที่จัดทำ',        metadata.get('date', '')),
+        ('หมายเหตุโครงการ',   metadata.get('notes', '')),
+    ]
+    insert(create_meta_table(meta_items))
+
+    # 6. Section break paragraph (page break between cover and content)
+    sect_para = make_para(space_before=0, space_after=0)
+    if sect_break_xml is not None:
+        pPr = ensure_pPr(sect_para)
+        pPr.append(sect_break_xml)
+    insert(sect_para)
+
+    print(f"  Title page: redesigned ({len(meta_items)} metadata fields)")
+
+
+# ── Main Rebranding ──────────────────────────────────────────────────────────
+
+def rebrand():
+    """Open source DOCX, create Ichita-branded copy."""
+    print(f"Source: {os.path.basename(SOURCE)}")
+    print(f"Font:   {BRAND_FONT}")
+
+    src_doc = Document(SOURCE)
+    dst_doc = Document()
+
+    src_body = src_doc.element.body
+    dst_body = dst_doc.element.body
+
+    # Clear destination body (keep final sectPr)
+    for child in list(dst_body):
+        if child.tag != qn('w:sectPr'):
+            dst_body.remove(child)
+
+    # ── Deep-copy all source body children ──
+    src_part = src_doc.part
+    dst_part = dst_doc.part
+
+    for child in src_body:
+        tag = child.tag.split('}')[-1]
+        new_elem = copy.deepcopy(child)
+
+        # Copy image relationships
+        copy_image_rels(src_part, dst_part, new_elem)
+
+        if tag == 'sectPr':
+            # Replace destination's final sectPr
+            old = dst_body.find(qn('w:sectPr'))
+            if old is not None:
+                dst_body.remove(old)
+            dst_body.append(new_elem)
+        else:
+            # Insert before final sectPr
+            final = dst_body.find(qn('w:sectPr'))
+            if final is not None:
+                final.addprevious(new_elem)
+            else:
+                dst_body.append(new_elem)
+
+    # ── Remove source header/footer references (we add our own) ──
+    for sectPr in dst_body.iter(qn('w:sectPr')):
+        for ref in list(sectPr.findall(qn('w:headerReference'))):
+            sectPr.remove(ref)
+        for ref in list(sectPr.findall(qn('w:footerReference'))):
+            sectPr.remove(ref)
+
+    # ── Remove logo, tagline, and excess empty space ──
+    cleanup_empty_space(dst_body)
+
+    # (margins set at the end, after all section modifications)
+
+    # ── Restyle paragraphs ──
+    para_count = 0
+    for p in dst_body.iter(qn('w:p')):
+        style_id = get_style_id(p)
+        text = get_text(p)
+        style_paragraph(p, style_id, text)
+        para_count += 1
+
+    # ── Restyle tables ──
+    tbl_count = 0
+    for tbl in dst_body.iter(qn('w:tbl')):
+        style_table(tbl)
+        tbl_count += 1
+
+    # ── Redesign title page (after restyling so it won't be overridden) ──
+    redesign_title_page(dst_body)
+
+    # ── Remove empty paragraphs in appendix area ──
+    # These cause blank pages between appendix tables
+    in_appendix = False
+    for child in list(dst_body):
+        tag = child.tag.split('}')[-1]
+        if tag == 'p':
+            text = get_text(child).strip()
+            if text.lower() == 'appendix' or text.startswith('A.'):
+                in_appendix = True
+            if in_appendix and not text and not has_images(child):
+                pPr = child.find(qn('w:pPr'))
+                if pPr is not None and pPr.find(qn('w:sectPr')) is not None:
+                    continue  # keep section-break paragraphs
+                dst_body.remove(child)
+
+    # ── Remove empty trailing section ──
+    # If the last inline sectPr creates a section with no content,
+    # merge it: copy its orientation to the final sectPr and remove it
+    children = list(dst_body)
+    final_sect = dst_body.find(qn('w:sectPr'))
+    if final_sect is not None:
+        # Find last inline section break
+        last_sb = None
+        last_sb_idx = None
+        for i, child in enumerate(children):
+            if child.tag == qn('w:p'):
+                pPr = child.find(qn('w:pPr'))
+                if pPr is not None and pPr.find(qn('w:sectPr')) is not None:
+                    last_sb = child
+                    last_sb_idx = i
+        # Check if there's no content between last section break and final sectPr
+        if last_sb is not None:
+            has_content = False
+            for sib in children[last_sb_idx + 1:]:
+                if sib.tag == qn('w:sectPr'):
+                    continue
+                if sib.tag == qn('w:tbl'):
+                    has_content = True
+                    break
+                if sib.tag == qn('w:p'):
+                    t = get_text(sib).strip()
+                    if t or has_images(sib):
+                        has_content = True
+                        break
+            if not has_content:
+                # Copy page size/orientation from inline sectPr to final
+                pPr = last_sb.find(qn('w:pPr'))
+                inline_sect = pPr.find(qn('w:sectPr'))
+                src_pgSz = inline_sect.find(qn('w:pgSz'))
+                dst_pgSz = final_sect.find(qn('w:pgSz'))
+                if src_pgSz is not None and dst_pgSz is not None:
+                    for attr in (qn('w:w'), qn('w:h'), qn('w:orient')):
+                        val = src_pgSz.get(attr)
+                        if val is not None:
+                            dst_pgSz.set(attr, val)
+                        elif attr == qn('w:orient'):
+                            # Remove orient attr if not present (portrait)
+                            if attr in dst_pgSz.attrib:
+                                del dst_pgSz.attrib[attr]
+                dst_body.remove(last_sb)
+
+    # ── Set page margins (LAST — after all section modifications) ──
+    LANDSCAPE_MARGIN = Cm(1.0)   # tight for wide appendix tables
+    PORTRAIT_MARGIN  = Cm(2.5)
+    for section in dst_doc.sections:
+        if section.orientation:  # Landscape
+            section.top_margin    = LANDSCAPE_MARGIN
+            section.bottom_margin = LANDSCAPE_MARGIN
+            section.left_margin   = LANDSCAPE_MARGIN
+            section.right_margin  = LANDSCAPE_MARGIN
+        else:  # Portrait
+            section.top_margin    = PORTRAIT_MARGIN
+            section.bottom_margin = PORTRAIT_MARGIN
+            section.left_margin   = PORTRAIT_MARGIN
+            section.right_margin  = PORTRAIT_MARGIN
+
+    # ── Squeeze wide tables to fit page ──
+    # A4 landscape = 16838 twips wide; with 1 cm margins → usable ~15,700
+    landscape_usable = int((Cm(29.7) - 2 * LANDSCAPE_MARGIN) / 914400 * 1440)
+    squeeze_wide_tables(dst_body, landscape_usable)
+
+    # ── Page-break control for headings before tables ──
+    # Remove ALL pageBreakBefore first, then add back only where needed
+    for p in dst_body.iter(qn('w:p')):
+        pPr = p.find(qn('w:pPr'))
+        if pPr is not None:
+            pb = pPr.find(qn('w:pageBreakBefore'))
+            if pb is not None:
+                pPr.remove(pb)
+
+    # Add pageBreakBefore to: appendix C/D headings, table captions (ตารางที่)
+    # NOT appendix A/B — A flows from content; B follows section break
+    children = list(dst_body)
+    for i, child in enumerate(children):
+        if child.tag != qn('w:p'):
+            continue
+        text = get_text(child).strip()
+
+        needs_pb = False
+        # Appendix C heading — force new page so heading stays with table
+        # (D flows naturally after C; B follows section break)
+        if re.match(r'^C\.', text):
+            needs_pb = True
+        # Table captions followed by a table — keep caption with table body
+        if text.startswith('ตารางที่'):
+            # Check if next sibling is a table
+            if i + 1 < len(children) and children[i + 1].tag == qn('w:tbl'):
+                needs_pb = True
+
+        if needs_pb:
+            pPr = ensure_pPr(child)
+            pPr.append(parse_xml(
+                f'<w:pageBreakBefore {nsdecls("w")}/>'))
+            print(f"  PB_BEFORE: {text[:60]}")
+
+    # ── Document default style ──
+    style = dst_doc.styles['Normal']
+    style.font.name = BRAND_FONT
+    style.font.size = Pt(12)
+    style.font.color.rgb = ICHITA_BLUE_GREY3
+
+    # ── ICHITA header/footer on every page ──
+    add_header_footer(dst_doc, LOGO)
+
+    # ── Save ──
+    dst_doc.save(OUTPUT)
+
+    # ── Report ──
+    size = os.path.getsize(OUTPUT)
+    verify = Document(OUTPUT)
+    img_count = sum(
+        1 for _ in dst_body.iter(qn('a:blip'))
+    )
+    print(f"\n{'='*60}")
+    print(f"  Saved: {OUTPUT}")
+    print(f"  Size:       {size:,} bytes ({size/1024/1024:.1f} MB)")
+    print(f"  Paragraphs: {para_count}")
+    print(f"  Tables:     {tbl_count}")
+    print(f"  Images:     {img_count} blip references")
+    print(f"  Sections:   {len(verify.sections)}")
+    print(f"  Font:       {BRAND_FONT}")
+    print(f"  Brand:      ICHITA\u2122 \u2014 Separation Technologies")
+    print(f"{'='*60}")
+
+
+if __name__ == "__main__":
+    rebrand()
