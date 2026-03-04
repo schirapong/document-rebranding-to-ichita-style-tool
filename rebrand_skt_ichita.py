@@ -677,8 +677,8 @@ def cleanup_empty_space(body):
         has_img = has_images(elem)
         style_id = get_style_id(elem)
 
-        # Track when we've passed the title
-        if style_id == STY_TITLE:
+        # Track when we've passed the title (by style or by content heading)
+        if style_id in (STY_TITLE, STY_TOPIC) or 'รายงานผลการทดสอบ' in text:
             found_title = True
 
         # Remove big logo image paragraph (image-only, before title)
@@ -1013,6 +1013,11 @@ def rebrand():
             sectPr.remove(ref)
         for ref in list(sectPr.findall(qn('w:footerReference'))):
             sectPr.remove(ref)
+        # Remove titlePg — source doc has "different first page" enabled,
+        # which hides our header on the first page of each section
+        title_pg = sectPr.find(qn('w:titlePg'))
+        if title_pg is not None:
+            sectPr.remove(title_pg)
 
     # ── Remove logo, tagline, and excess empty space ──
     cleanup_empty_space(dst_body)
