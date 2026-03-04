@@ -411,6 +411,12 @@ def style_paragraph(p_elem, style_id, text):
         add_left_accent(p_elem)
         pPr = ensure_pPr(p_elem)
         pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+        sp = pPr.find(qn('w:spacing'))
+        if sp is None:
+            sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+            pPr.append(sp)
+        sp.set(qn('w:before'), '280')
+        sp.set(qn('w:after'), '120')
         return
 
     # ── Detect heading by text content (Normal-styled headings) ──
@@ -421,19 +427,47 @@ def style_paragraph(p_elem, style_id, text):
         add_left_accent(p_elem)
         pPr = ensure_pPr(p_elem)
         pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+        # Standardise spacing (override source inconsistencies)
+        sp = pPr.find(qn('w:spacing'))
+        if sp is None:
+            sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+            pPr.append(sp)
+        sp.set(qn('w:before'), '280')
+        sp.set(qn('w:after'), '120')
     elif heading == 'subsection':
         style_runs(p_elem, size_pt=12, color_hex=HEX_BLUE, bold=True)
         pPr = ensure_pPr(p_elem)
         pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+        sp = pPr.find(qn('w:spacing'))
+        if sp is None:
+            sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+            pPr.append(sp)
+        sp.set(qn('w:before'), '200')
+        sp.set(qn('w:after'), '120')
     elif heading == 'caption':
         style_runs(p_elem, size_pt=10.5, color_hex=HEX_GREY2)
         set_alignment(p_elem, 'center')
         pPr = ensure_pPr(p_elem)
         pPr.append(parse_xml(f'<w:keepNext {nsdecls("w")}/>'))
+        sp = pPr.find(qn('w:spacing'))
+        if sp is None:
+            sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+            pPr.append(sp)
+        sp.set(qn('w:before'), '120')
+        sp.set(qn('w:after'), '60')
 
     else:
         # Normal body text (12pt — one size up for Thai readability)
         style_runs(p_elem, size_pt=12, color_hex=HEX_DARK)
+        # Ensure consistent paragraph spacing — reset both before and after
+        # to override any values inherited from the source document.
+        pPr = ensure_pPr(p_elem)
+        sp = pPr.find(qn('w:spacing'))
+        if sp is None:
+            sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+            pPr.append(sp)
+        sp.set(qn('w:before'), '0')
+        sp.set(qn('w:after'), '120')
 
 
 # ── Table Styling ────────────────────────────────────────────────────────────
@@ -1038,6 +1072,61 @@ def rebrand():
         style_table(tbl)
         tbl_count += 1
 
+    # ── Reorder image tables: caption above table, text after ──
+    # Original order:  text → img table → caption
+    # New order:        caption → img table → text
+    # Caption on top keeps it glued to its table regardless of pagination,
+    # and the text paragraph flows naturally after without being split.
+    children = list(dst_body)
+    for i, child in enumerate(children):
+        if child.tag.split('}')[-1] != 'tbl':
+            continue
+        if not child.findall('.//' + qn('w:drawing')):
+            continue
+        # Check next sibling is a caption (starts with "รูปที่")
+        caption = None
+        if i + 1 < len(children) and children[i + 1].tag == qn('w:p'):
+            nxt = children[i + 1]
+            cap_text = ''.join(t.text or '' for t in nxt.findall('.//' + qn('w:t'))).strip()
+            if cap_text.startswith('รูปที่'):
+                caption = nxt
+        if caption is not None:
+            # Move caption to just before the image table
+            child.addprevious(caption)
+
+    # ── Enforce consistent spacing between tables and adjacent text ──
+    # Tables in the source often have 0 spacing to adjacent paragraphs,
+    # which looks cramped with the smaller branded fonts.
+    SPACE_AROUND_TABLE = "160"  # 8pt in twips (half-points * 10)
+    children = list(dst_body)
+    for i, child in enumerate(children):
+        if child.tag.split('}')[-1] != 'tbl':
+            continue
+
+        # Paragraph BEFORE table: ensure space_after
+        if i > 0 and children[i - 1].tag == qn('w:p'):
+            prev_p = children[i - 1]
+            pPr = ensure_pPr(prev_p)
+            sp = pPr.find(qn('w:spacing'))
+            if sp is None:
+                sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+                pPr.append(sp)
+            cur_after = int(sp.get(qn('w:after'), '0'))
+            if cur_after < int(SPACE_AROUND_TABLE):
+                sp.set(qn('w:after'), SPACE_AROUND_TABLE)
+
+        # Paragraph AFTER table: ensure space_before
+        if i + 1 < len(children) and children[i + 1].tag == qn('w:p'):
+            next_p = children[i + 1]
+            pPr = ensure_pPr(next_p)
+            sp = pPr.find(qn('w:spacing'))
+            if sp is None:
+                sp = parse_xml(f'<w:spacing {nsdecls("w")}/>')
+                pPr.append(sp)
+            cur_before = int(sp.get(qn('w:before'), '0'))
+            if cur_before < int(SPACE_AROUND_TABLE):
+                sp.set(qn('w:before'), SPACE_AROUND_TABLE)
+
     # ── Redesign title page (after restyling so it won't be overridden) ──
     redesign_title_page(dst_body)
 
@@ -1103,16 +1192,18 @@ def rebrand():
                 dst_body.remove(last_sb)
 
     # ── Set page margins (LAST — after all section modifications) ──
-    LANDSCAPE_MARGIN = Cm(1.0)   # tight for wide appendix tables
+    LANDSCAPE_MARGIN = Cm(1.0)   # tight side margins for wide appendix tables
+    LANDSCAPE_TOP    = Cm(3.0)   # top margin consistent with portrait header gap
     PORTRAIT_MARGIN  = Cm(2.5)
+    PORTRAIT_TOP     = Cm(3.5)   # extra top margin: header + gap before body text
     for section in dst_doc.sections:
         if section.orientation:  # Landscape
-            section.top_margin    = LANDSCAPE_MARGIN
+            section.top_margin    = LANDSCAPE_TOP
             section.bottom_margin = LANDSCAPE_MARGIN
             section.left_margin   = LANDSCAPE_MARGIN
             section.right_margin  = LANDSCAPE_MARGIN
         else:  # Portrait
-            section.top_margin    = PORTRAIT_MARGIN
+            section.top_margin    = PORTRAIT_TOP
             section.bottom_margin = PORTRAIT_MARGIN
             section.left_margin   = PORTRAIT_MARGIN
             section.right_margin  = PORTRAIT_MARGIN
@@ -1160,6 +1251,35 @@ def rebrand():
                     f'<w:pageBreakBefore {nsdecls("w")}/>'))
                 t = get_text(target).strip()
                 print(f"  PB_BEFORE: {t[:60]}")
+
+    # ── Zero space_before on page-top paragraphs ──
+    # Paragraphs that start at the top of a page (pageBreakBefore or
+    # first after a section break) should have space_before=0 so the
+    # gap from header to first content line is consistent everywhere.
+    children = list(dst_body)
+    for i, child in enumerate(children):
+        if child.tag != qn('w:p'):
+            continue
+        pPr = child.find(qn('w:pPr'))
+        if pPr is None:
+            continue
+
+        zero_it = False
+
+        # Case 1: paragraph has pageBreakBefore
+        if pPr.find(qn('w:pageBreakBefore')) is not None:
+            zero_it = True
+
+        # Case 2: first paragraph after a section break
+        if i > 0 and children[i - 1].tag == qn('w:p'):
+            prev_pPr = children[i - 1].find(qn('w:pPr'))
+            if prev_pPr is not None and prev_pPr.find(qn('w:sectPr')) is not None:
+                zero_it = True
+
+        if zero_it:
+            sp = pPr.find(qn('w:spacing'))
+            if sp is not None:
+                sp.set(qn('w:before'), '0')
 
     # ── Document default style ──
     style = dst_doc.styles['Normal']
