@@ -36,7 +36,10 @@ HEX_GREY2     = "788F9C"
 # ── Font Detection ───────────────────────────────────────────────────────────
 
 BRAND_FONT = "Avenir Next"
-for _fd in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts"]:
+THAI_FONT  = "Bai Jamjuree"  # Thai font with matched metrics to geometric sans-serif
+THAI_SCALE = 0.9              # Thai 9pt / English 10pt — one size down for visual balance
+
+for _fd in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts", "/System/Library/Fonts"]:
     if os.path.isdir(_fd):
         if any("aeonik" in f.lower() for f in os.listdir(_fd)):
             BRAND_FONT = "Aeonik"
@@ -86,8 +89,136 @@ def has_images(elem):
     return bool(elem.findall('.//' + qn('a:blip')))
 
 
+def _is_thai(c):
+    """Check if a character is Thai (U+0E00-U+0E7F)."""
+    return '\u0e00' <= c <= '\u0e7f'
+
+
+def _split_thai_latin(text):
+    """Split text into segments of (text, is_thai) tuples.
+    Groups consecutive Thai chars together, and consecutive non-Thai chars together."""
+    if not text:
+        return []
+    segments = []
+    current = text[0]
+    current_thai = _is_thai(text[0])
+    for c in text[1:]:
+        c_thai = _is_thai(c)
+        if c_thai == current_thai:
+            current += c
+        else:
+            segments.append((current, current_thai))
+            current = c
+            current_thai = c_thai
+    segments.append((current, current_thai))
+    return segments
+
+
+def _text_is_thai(text):
+    """Check if text contains any Thai characters."""
+    return any(_is_thai(c) for c in text)
+
+
+def _text_is_mixed(text):
+    """Check if text contains both Thai and non-Thai characters (ignoring whitespace/punctuation)."""
+    has_thai = False
+    has_latin = False
+    for c in text:
+        if _is_thai(c):
+            has_thai = True
+        elif c.isalpha():
+            has_latin = True
+        if has_thai and has_latin:
+            return True
+    return False
+
+
+def split_run_thai_latin(run_elem, parent_elem):
+    """Split a mixed Thai/Latin w:r element into separate runs with appropriate fonts.
+
+    For runs containing both Thai and Latin text, splits into multiple <w:r> elements:
+    - Thai segments: Bai Jamjuree font at size * THAI_SCALE
+    - Latin segments: BRAND_FONT at original size
+
+    Args:
+        run_elem: The w:r XML element to potentially split
+        parent_elem: The parent element (w:p) containing the run
+    """
+    # Get the text element
+    t_elem = run_elem.find(qn('w:t'))
+    if t_elem is None or not t_elem.text:
+        return
+
+    text = t_elem.text
+    segments = _split_thai_latin(text)
+
+    # If only one segment (all Thai or all Latin), just set the right font
+    if len(segments) <= 1:
+        return
+
+    # Multiple segments — split the run
+    rPr_orig = run_elem.find(qn('w:rPr'))
+
+    # Get current size from rPr
+    current_sz = None
+    if rPr_orig is not None:
+        sz_el = rPr_orig.find(qn('w:sz'))
+        if sz_el is not None:
+            current_sz = int(sz_el.get(qn('w:val'), '0'))
+
+    # Insert new runs after the original, then remove the original
+    insert_after = run_elem
+    for seg_text, is_thai in segments:
+        new_run = parse_xml(f'<w:r {nsdecls("w")}/>')
+
+        # Copy rPr
+        if rPr_orig is not None:
+            new_rPr = copy.deepcopy(rPr_orig)
+        else:
+            new_rPr = parse_xml(f'<w:rPr {nsdecls("w")}/>')
+        new_run.insert(0, new_rPr)
+
+        # Set font name
+        rf = new_rPr.find(qn('w:rFonts'))
+        if rf is None:
+            rf = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
+            new_rPr.insert(0, rf)
+        font = THAI_FONT if is_thai else BRAND_FONT
+        for attr in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
+            rf.set(qn(attr), font)
+
+        # Set size — Thai gets scaled down
+        if is_thai and current_sz:
+            thai_hp = str(int(current_sz * THAI_SCALE))
+            for tag in ('w:sz', 'w:szCs'):
+                el = new_rPr.find(qn(tag))
+                if el is not None:
+                    el.set(qn('w:val'), thai_hp)
+                else:
+                    new_rPr.append(parse_xml(
+                        f'<{tag} {nsdecls("w")} w:val="{thai_hp}"/>'))
+
+        # Add text element
+        new_t = parse_xml(f'<w:t {nsdecls("w")}/>')
+        new_t.text = seg_text
+        new_t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+        new_run.append(new_t)
+
+        # Insert after current position
+        insert_after.addnext(new_run)
+        insert_after = new_run
+
+    # Remove the original run
+    parent_elem.remove(run_elem)
+
+
 def set_font(run_elem, font_name=None, size_pt=None, color_hex=None, bold=None):
-    """Set font properties on a w:r element at the XML level."""
+    """Set font properties on a w:r element at the XML level.
+
+    Detects Thai text and sets Bai Jamjuree font with scaled size.
+    For Latin text, uses BRAND_FONT at the specified size.
+    Mixed runs are handled later by split_run_thai_latin().
+    """
     if font_name is None:
         font_name = BRAND_FONT
 
@@ -96,22 +227,28 @@ def set_font(run_elem, font_name=None, size_pt=None, color_hex=None, bold=None):
         rPr = parse_xml(f'<w:rPr {nsdecls("w")}/>')
         run_elem.insert(0, rPr)
 
-    # ── Font name ──
+    # ── Detect if this run's text is Thai ──
+    t_elem = run_elem.find(qn('w:t'))
+    run_text = t_elem.text if t_elem is not None and t_elem.text else ""
+    is_thai = _text_is_thai(run_text) and not _text_is_mixed(run_text)
+
+    # ── Font name — Thai gets Bai Jamjuree, Latin gets BRAND_FONT ──
+    actual_font = THAI_FONT if is_thai else font_name
     rf = rPr.find(qn('w:rFonts'))
     if rf is None:
         rf = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
         rPr.insert(0, rf)
     for attr in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
-        rf.set(qn(attr), font_name)
+        rf.set(qn(attr), actual_font)
 
     # ── Size (half-points) ──
-    # Latin (Aeonik) renders visually larger than Thai at the same pt size,
-    # so w:sz (Latin) is reduced by LATIN_OFFSET to balance them.
-    LATIN_OFFSET = 1.5  # pt smaller for English
+    # Thai text gets scaled down by THAI_SCALE for visual balance
     if size_pt is not None:
-        hp_latin = str(int((size_pt - LATIN_OFFSET) * 2))
-        hp_cs    = str(int(size_pt * 2))
-        for tag, hp in (('w:sz', hp_latin), ('w:szCs', hp_cs)):
+        if is_thai:
+            hp = str(int(size_pt * THAI_SCALE * 2))
+        else:
+            hp = str(int(size_pt * 2))
+        for tag in ('w:sz', 'w:szCs'):
             el = rPr.find(qn(tag))
             if el is not None:
                 el.set(qn('w:val'), hp)
@@ -236,11 +373,20 @@ def detect_heading(text):
 # ── Paragraph Styling ────────────────────────────────────────────────────────
 
 def style_runs(p_elem, size_pt=10.5, color_hex="263338", bold=None):
-    """Apply brand font to all text runs in a paragraph (skip image runs)."""
+    """Apply brand font to all text runs in a paragraph (skip image runs).
+    After setting fonts, splits mixed Thai/Latin runs into separate elements."""
     for run in p_elem.findall('.//' + qn('w:r')):
         if has_images(run):
             continue
         set_font(run, size_pt=size_pt, color_hex=color_hex, bold=bold)
+
+    # Second pass: split any mixed Thai/Latin runs into separate elements
+    for run in list(p_elem.findall('.//' + qn('w:r'))):
+        if has_images(run):
+            continue
+        t_elem = run.find(qn('w:t'))
+        if t_elem is not None and t_elem.text and _text_is_mixed(t_elem.text):
+            split_run_thai_latin(run, p_elem)
 
 
 def style_paragraph(p_elem, style_id, text):
@@ -571,17 +717,23 @@ def cleanup_empty_space(body):
 
 def make_para(text="", size_pt=12, color_hex=HEX_DARK, bold=False,
               align='left', space_before=0, space_after=0):
-    """Create a new w:p element with formatted text and spacing."""
+    """Create a new w:p element with formatted text and spacing.
+    Splits mixed Thai/Latin text into separate runs."""
     p = parse_xml(f'<w:p {nsdecls("w")}/>')
 
     if text:
-        r = parse_xml(f'<w:r {nsdecls("w")}/>')
-        t = parse_xml(f'<w:t {nsdecls("w")}/>')
-        t.text = text
-        t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-        r.append(t)
-        set_font(r, size_pt=size_pt, color_hex=color_hex, bold=bold)
-        p.append(r)
+        # Split into Thai/Latin segments for proper font assignment
+        segments = _split_thai_latin(text)
+        for seg_text, is_thai in segments:
+            r = parse_xml(f'<w:r {nsdecls("w")}/>')
+            t = parse_xml(f'<w:t {nsdecls("w")}/>')
+            t.text = seg_text
+            t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+            r.append(t)
+            font = THAI_FONT if is_thai else BRAND_FONT
+            sz = size_pt * THAI_SCALE if is_thai else size_pt
+            set_font(r, font_name=font, size_pt=sz, color_hex=color_hex, bold=bold)
+            p.append(r)
 
     pPr = ensure_pPr(p)
     if align != 'left':
@@ -598,9 +750,21 @@ def create_meta_table(items):
     """Build a clean 2-column metadata table (label | value).
 
     Horizontal dividers only, no vertical lines — modern, professional look.
+    Uses Bai Jamjuree for Thai labels, BRAND_FONT for Latin values.
     """
+    label_sz = str(int(11 * THAI_SCALE * 2))  # Thai scaled size in half-points
+    value_sz = "22"                             # 11pt in half-points
+
     rows_xml = ""
     for label, value in items:
+        # Label: Thai text → Bai Jamjuree at scaled size
+        label_font = THAI_FONT if _text_is_thai(label) else BRAND_FONT
+        label_hp = label_sz if _text_is_thai(label) else value_sz
+
+        # Value: detect Thai content
+        value_font = THAI_FONT if _text_is_thai(value) else BRAND_FONT
+        value_hp = label_sz if _text_is_thai(value) else value_sz
+
         rows_xml += (
             '<w:tr>'
             '  <w:tc>'
@@ -609,9 +773,9 @@ def create_meta_table(items):
             '      <w:spacing w:before="50" w:after="50"/>'
             '    </w:pPr>'
             '    <w:r><w:rPr>'
-            f'      <w:rFonts w:ascii="{BRAND_FONT}" w:hAnsi="{BRAND_FONT}"'
-            f'               w:cs="{BRAND_FONT}" w:eastAsia="{BRAND_FONT}"/>'
-            '      <w:sz w:val="22"/><w:szCs w:val="22"/>'
+            f'      <w:rFonts w:ascii="{label_font}" w:hAnsi="{label_font}"'
+            f'               w:cs="{label_font}" w:eastAsia="{label_font}"/>'
+            f'      <w:sz w:val="{label_hp}"/><w:szCs w:val="{label_hp}"/>'
             f'      <w:color w:val="{HEX_BLUE}"/>'
             '      <w:b/><w:bCs/>'
             f'    </w:rPr><w:t xml:space="preserve">{label}</w:t></w:r>'
@@ -623,9 +787,9 @@ def create_meta_table(items):
             '      <w:spacing w:before="50" w:after="50"/>'
             '    </w:pPr>'
             '    <w:r><w:rPr>'
-            f'      <w:rFonts w:ascii="{BRAND_FONT}" w:hAnsi="{BRAND_FONT}"'
-            f'               w:cs="{BRAND_FONT}" w:eastAsia="{BRAND_FONT}"/>'
-            '      <w:sz w:val="22"/><w:szCs w:val="22"/>'
+            f'      <w:rFonts w:ascii="{value_font}" w:hAnsi="{value_font}"'
+            f'               w:cs="{value_font}" w:eastAsia="{value_font}"/>'
+            f'      <w:sz w:val="{value_hp}"/><w:szCs w:val="{value_hp}"/>'
             f'      <w:color w:val="{HEX_DARK}"/>'
             f'    </w:rPr><w:t xml:space="preserve">{value}</w:t></w:r>'
             '    </w:p>'
@@ -997,6 +1161,14 @@ def rebrand():
     style.font.name = BRAND_FONT
     style.font.size = Pt(12)
     style.font.color.rgb = ICHITA_BLUE_GREY3
+    # Set Thai (Complex Script) font + scaled size on default style
+    n_rPr = style.element.get_or_add_rPr()
+    n_rFonts = n_rPr.find(qn('w:rFonts'))
+    if n_rFonts is None:
+        n_rFonts = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
+        n_rPr.insert(0, n_rFonts)
+    n_rFonts.set(qn('w:cs'), THAI_FONT)
+    n_rFonts.set(qn('w:eastAsia'), THAI_FONT)
 
     # ── ICHITA header/footer on every page ──
     add_header_footer(dst_doc, LOGO)
@@ -1017,8 +1189,8 @@ def rebrand():
     print(f"  Tables:     {tbl_count}")
     print(f"  Images:     {img_count} blip references")
     print(f"  Sections:   {len(verify.sections)}")
-    print(f"  Font:       {BRAND_FONT}")
-    print(f"  Brand:      ICHITA\u2122 \u2014 Separation Technologies")
+    print(f"  Font:       {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
+    print(f"  Brand:      ICHITA -- Separation Technologies")
     print(f"{'='*60}")
 
 
