@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Rebrand SKT Pilot Report (Nuosep HP) to Ichita brand identity.
+Rebrand any DOCX document to Ichita brand identity.
 
 Reads the source DOCX and creates an Ichita-branded version:
 - ICHITA logo in header with blue accent line
@@ -8,11 +8,18 @@ Reads the source DOCX and creates an Ichita-branded version:
 - Brand colors (#2978FF primary, #263338 headings)
 - Dark table headers (#263338), alternating row shading (#EFF2F3)
 - Preserves all content, tables (merged cells), images, sections
+
+Usage:
+    python3 rebrand_skt_ichita.py input.docx                # → input_ichita.docx
+    python3 rebrand_skt_ichita.py input.docx output.docx    # custom output path
+    python3 rebrand_skt_ichita.py input.docx --logo my.png  # custom logo
 """
 
+import argparse
 import os
 import re
 import copy
+import sys
 from docx import Document
 from docx.shared import Pt, Inches, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -33,33 +40,44 @@ HEX_BORDER    = "A0B0B8"
 HEX_GREY2     = "788F9C"
 
 
+# ── Script directory (for resolving relative paths) ─────────────────────────
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 # ── Font Detection ───────────────────────────────────────────────────────────
 
 BRAND_FONT = "Avenir Next"
 THAI_FONT  = "Bai Jamjuree"  # Thai font with matched metrics to geometric sans-serif
 THAI_SCALE = 0.9              # Thai 9pt / English 10pt — one size down for visual balance
 
-for _fd in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts", "/System/Library/Fonts"]:
+# Check system font dirs + bundled Aeonik-Essentials-Web for Aeonik
+_font_dirs = [
+    os.path.expanduser("~/Library/Fonts"),
+    "/Library/Fonts",
+    "/System/Library/Fonts",
+    os.path.expanduser("~/.local/share/fonts"),
+    os.path.join(SCRIPT_DIR, "Aeonik-Essentials-Web"),
+]
+for _fd in _font_dirs:
     if os.path.isdir(_fd):
         if any("aeonik" in f.lower() for f in os.listdir(_fd)):
             BRAND_FONT = "Aeonik"
             break
 
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# ── Default Logo Path (resolved relative to script) ─────────────────────────
 
-SOURCE = "/Users/chirapongsakullachat/Documents/data/" \
-         "SKT-Pilot-Report-Nuosep-HP-revised 5(1).docx"
-OUTPUT = "/Users/chirapongsakullachat/Documents/data/" \
-         "SKT-Pilot-Report-Nuosep-HP-Ichita.docx"
-LOGO   = "/Users/chirapongsakullachat/Documents/my-project/ichita brand ID/" \
-         "ICHITA BRAND BOOK AND COMPANY PROFILE/LogoV2 3/Digital/PNG/" \
-         "Wordmark/Ichita_Logo-05.png"
+DEFAULT_LOGO = os.path.join(
+    SCRIPT_DIR, "ichita brand ID",
+    "ICHITA BRAND BOOK AND COMPANY PROFILE", "LogoV2 3",
+    "Digital", "PNG", "Wordmark", "Ichita_Logo-05.png")
 
-# Source document style IDs
-STY_TITLE    = "0TitleTHSaraban"
-STY_SUBTITLE = "0SubTitleTHSaraban"
-STY_TOPIC    = "1Topic"
+# Source document style IDs (common Thai template styles — auto-detected)
+# These are checked first; if not matched, detect_heading() does text-based detection.
+KNOWN_TITLE_STYLES    = {"0TitleTHSaraban", "Title", "0Title"}
+KNOWN_SUBTITLE_STYLES = {"0SubTitleTHSaraban", "Subtitle", "0SubTitle"}
+KNOWN_TOPIC_STYLES    = {"1Topic", "Heading1", "Heading 1"}
 
 
 # ── XML Helpers ──────────────────────────────────────────────────────────────
@@ -393,20 +411,20 @@ def style_paragraph(p_elem, style_id, text):
     """Apply Ichita brand styling to a paragraph."""
 
     # ── Title ──
-    if style_id == STY_TITLE:
+    if style_id in KNOWN_TITLE_STYLES:
         style_runs(p_elem, size_pt=26, color_hex=HEX_DARK, bold=True)
         set_alignment(p_elem, 'center')
         add_bottom_band(p_elem)
         return
 
     # ── Subtitle ──
-    if style_id == STY_SUBTITLE:
+    if style_id in KNOWN_SUBTITLE_STYLES:
         style_runs(p_elem, size_pt=15, color_hex=HEX_GREY2)
         set_alignment(p_elem, 'center')
         return
 
     # ── Topic (H2 from source template) ──
-    if style_id == STY_TOPIC:
+    if style_id in KNOWN_TOPIC_STYLES:
         style_runs(p_elem, size_pt=15, color_hex=HEX_DARK, bold=True)
         add_left_accent(p_elem)
         pPr = ensure_pPr(p_elem)
@@ -712,7 +730,7 @@ def cleanup_empty_space(body):
         style_id = get_style_id(elem)
 
         # Track when we've passed the title (by style or by content heading)
-        if style_id in (STY_TITLE, STY_TOPIC) or 'รายงานผลการทดสอบ' in text:
+        if style_id in KNOWN_TITLE_STYLES | KNOWN_TOPIC_STYLES or 'รายงานผลการทดสอบ' in text:
             found_title = True
 
         # Remove big logo image paragraph (image-only, before title)
@@ -910,10 +928,10 @@ def redesign_title_page(body):
                 break
 
         # Title and subtitle — detect by style OR by text content
-        if style_id == STY_TITLE or (not title_text and 'รายงานผลการทดสอบ' in text):
+        if style_id in KNOWN_TITLE_STYLES or (not title_text and 'รายงานผลการทดสอบ' in text):
             title_text = text
             to_remove.append(elem)
-        elif style_id == STY_SUBTITLE or (not subtitle_text and 'ระบบกำจัดสี' in text):
+        elif style_id in KNOWN_SUBTITLE_STYLES or (not subtitle_text and 'ระบบกำจัดสี' in text):
             subtitle_text = text
             to_remove.append(elem)
 
@@ -927,7 +945,7 @@ def redesign_title_page(body):
         if elem in to_remove:
             continue
         # Stop at first Topic heading (real content starts)
-        if style_id == STY_TOPIC:
+        if style_id in KNOWN_TOPIC_STYLES:
             break
         # Skip metadata / title / subtitle (already handled)
         if any(k in text for k in ['ชื่อ', 'ลูกค้า', 'วันที่', 'หมายเหตุ',
@@ -1000,12 +1018,22 @@ def redesign_title_page(body):
 
 # ── Main Rebranding ──────────────────────────────────────────────────────────
 
-def rebrand():
-    """Open source DOCX, create Ichita-branded copy."""
-    print(f"Source: {os.path.basename(SOURCE)}")
+def rebrand(source, output, logo=None):
+    """Open source DOCX, create Ichita-branded copy.
+
+    Args:
+        source: Path to source DOCX file
+        output: Path to write branded output DOCX
+        logo: Path to logo PNG (default: bundled Ichita wordmark)
+    """
+    if logo is None:
+        logo = DEFAULT_LOGO
+
+    print(f"Source: {os.path.basename(source)}")
+    print(f"Output: {os.path.basename(output)}")
     print(f"Font:   {BRAND_FONT}")
 
-    src_doc = Document(SOURCE)
+    src_doc = Document(source)
     dst_doc = Document()
 
     src_body = src_doc.element.body
@@ -1296,28 +1324,61 @@ def rebrand():
     n_rFonts.set(qn('w:eastAsia'), THAI_FONT)
 
     # ── ICHITA header/footer on every page ──
-    add_header_footer(dst_doc, LOGO)
+    add_header_footer(dst_doc, logo)
 
     # ── Save ──
-    dst_doc.save(OUTPUT)
+    dst_doc.save(output)
 
     # ── Report ──
-    size = os.path.getsize(OUTPUT)
-    verify = Document(OUTPUT)
+    size = os.path.getsize(output)
     img_count = sum(
         1 for _ in dst_body.iter(qn('a:blip'))
     )
+    section_count = len(dst_doc.sections)
     print(f"\n{'='*60}")
-    print(f"  Saved: {OUTPUT}")
+    print(f"  Saved: {output}")
     print(f"  Size:       {size:,} bytes ({size/1024/1024:.1f} MB)")
     print(f"  Paragraphs: {para_count}")
     print(f"  Tables:     {tbl_count}")
     print(f"  Images:     {img_count} blip references")
-    print(f"  Sections:   {len(verify.sections)}")
+    print(f"  Sections:   {section_count}")
     print(f"  Font:       {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
     print(f"  Brand:      ICHITA -- Separation Technologies")
     print(f"{'='*60}")
 
 
+def main():
+    parser = argparse.ArgumentParser(
+        description="Rebrand a DOCX document to Ichita brand identity.",
+        epilog="Examples:\n"
+               "  python3 rebrand_skt_ichita.py report.docx\n"
+               "  python3 rebrand_skt_ichita.py report.docx branded.docx\n"
+               "  python3 rebrand_skt_ichita.py report.docx --logo custom_logo.png\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("input", help="Source DOCX file to rebrand")
+    parser.add_argument("output", nargs="?", default=None,
+                        help="Output DOCX path (default: <input>_ichita.docx)")
+    parser.add_argument("--logo", default=None,
+                        help="Path to logo PNG for header "
+                             f"(default: bundled Ichita wordmark)")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        print(f"Error: source file not found: {args.input}", file=sys.stderr)
+        sys.exit(1)
+
+    output = args.output
+    if output is None:
+        base, ext = os.path.splitext(args.input)
+        output = f"{base}_ichita{ext}"
+
+    logo = args.logo
+    if logo and not os.path.exists(logo):
+        print(f"Warning: logo file not found: {logo} — will use text fallback",
+              file=sys.stderr)
+
+    rebrand(args.input, output, logo=logo)
+
+
 if __name__ == "__main__":
-    rebrand()
+    main()
