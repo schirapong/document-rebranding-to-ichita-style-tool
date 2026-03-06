@@ -12,8 +12,15 @@ Applies Ichita Brand Identity styling:
 
 Handles: headings (#-####), tables, code blocks, bold/italic, bullets,
 numbered lists, blockquotes, horizontal rules, links, and regular paragraphs.
+
+
+Usage:
+    python3 md_to_docx.py input.md              # → input.docx
+    python3 md_to_docx.py input.md output.docx  # custom output path
+    python3 md_to_docx.py input.md --logo my.png # custom logo
 """
 
+import argparse
 import re
 import os
 import sys
@@ -47,6 +54,11 @@ HEX_CODE_BG      = "EFF2F3"   # Code block background
 HEX_QUOTE_BG     = "EBF0F7"   # Blockquote background
 
 
+# ── Script directory (for resolving relative paths) ─────────────────────────
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 # ── Font Configuration ────────────────────────────────────────────────────────
 # Priority: Aeonik (brand) → Avenir Next (closest geometric match) → Calibri (fallback)
 
@@ -55,26 +67,26 @@ THAI_FONT  = "Bai Jamjuree" # Thai font with matched metrics to geometric sans-s
 THAI_SCALE = 0.9             # Thai 9pt / English 10pt — Bai Jamjuree one size down for visual balance
 MONO_FONT  = "Courier New"
 
-# Try to detect Aeonik availability
-for font_dir in [os.path.expanduser("~/Library/Fonts"), "/Library/Fonts", "/System/Library/Fonts"]:
-    if os.path.isdir(font_dir):
-        for f in os.listdir(font_dir):
-            if "aeonik" in f.lower():
-                BRAND_FONT = "Aeonik"
-                break
+# Check system font dirs + bundled Aeonik-Essentials-Web for Aeonik
+_font_dirs = [
+    os.path.expanduser("~/Library/Fonts"),
+    "/Library/Fonts",
+    "/System/Library/Fonts",
+    os.path.expanduser("~/.local/share/fonts"),
+    os.path.join(SCRIPT_DIR, "Aeonik-Essentials-Web"),
+]
+for _fd in _font_dirs:
+    if os.path.isdir(_fd):
+        if any("aeonik" in f.lower() for f in os.listdir(_fd)):
+            BRAND_FONT = "Aeonik"
+            break
 
-# ── Logo Path ─────────────────────────────────────────────────────────────────
-# Logo-05: dark wordmark on white/transparent background — ideal for headers
-# Resolve relative to script location so it works from any working directory
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_PATH = os.path.join(_SCRIPT_DIR, "assets", "Ichita_Logo-05.png")
-if not os.path.exists(LOGO_PATH):
-    # Fallback to absolute path on this machine
-    LOGO_PATH = os.path.expanduser(
-        "~/Documents/my-project/ichita brand ID/"
-        "ICHITA BRAND BOOK AND COMPANY PROFILE/LogoV2 3/Digital/PNG/"
-        "Wordmark/Ichita_Logo-05.png"
-    )
+# ── Default Logo Path (resolved relative to script) ─────────────────────────
+
+DEFAULT_LOGO = os.path.join(
+    SCRIPT_DIR, "ichita brand ID",
+    "ICHITA BRAND BOOK AND COMPANY PROFILE", "LogoV2 3",
+    "Digital", "PNG", "Wordmark", "Ichita_Logo-05.png")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -362,7 +374,17 @@ def add_title_page_band(doc):
 
 # ── Main Conversion ──────────────────────────────────────────────────────────
 
-def convert_md_to_docx(input_path, output_path):
+def convert_md_to_docx(input_path, output_path, logo_path=None):
+    """Convert a Markdown file to an Ichita-branded DOCX.
+
+    Args:
+        input_path: Path to source .md file
+        output_path: Path to write .docx output
+        logo_path: Path to logo PNG for header (default: bundled Ichita wordmark)
+    """
+    if logo_path is None:
+        logo_path = DEFAULT_LOGO
+
     with open(input_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
@@ -451,7 +473,7 @@ def convert_md_to_docx(input_path, output_path):
         section.right_margin = Cm(2.5)
 
     # ── Add header and footer ──
-    add_header_footer(doc, LOGO_PATH)
+    add_header_footer(doc, logo_path)
 
     i = 0
     first_h1 = True
@@ -652,17 +674,39 @@ def convert_md_to_docx(input_path, output_path):
     print(f"  Brand: ICHITA -- Separation Technologies")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) >= 3:
-        input_md = sys.argv[1]
-        output_docx = sys.argv[2]
-    elif len(sys.argv) == 2:
-        input_md = sys.argv[1]
-        output_docx = os.path.splitext(input_md)[0] + ".docx"
-    else:
-        print("Usage: python3 md_to_docx.py input.md [output.docx]")
+def main():
+    parser = argparse.ArgumentParser(
+        description="Convert Markdown to Ichita-branded DOCX.",
+        epilog="Examples:\n"
+               "  python3 md_to_docx.py report.md\n"
+               "  python3 md_to_docx.py report.md output.docx\n"
+               "  python3 md_to_docx.py report.md --logo custom_logo.png\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("input", help="Source Markdown file")
+    parser.add_argument("output", nargs="?", default=None,
+                        help="Output DOCX path (default: <input>.docx)")
+    parser.add_argument("--logo", default=None,
+                        help="Path to logo PNG for header "
+                             "(default: bundled Ichita wordmark)")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        print(f"Error: source file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Converting: {os.path.basename(input_md)}")
+    output = args.output
+    if output is None:
+        output = os.path.splitext(args.input)[0] + ".docx"
+
+    logo = args.logo
+    if logo and not os.path.exists(logo):
+        print(f"Warning: logo file not found: {logo} — will use text fallback",
+              file=sys.stderr)
+
+    print(f"Converting: {os.path.basename(args.input)}")
     print(f"Brand style: ICHITA")
-    convert_md_to_docx(input_md, output_docx)
+    convert_md_to_docx(args.input, output, logo_path=logo)
+
+
+if __name__ == "__main__":
+    main()
