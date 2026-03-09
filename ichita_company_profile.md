@@ -12,7 +12,7 @@ ICHITA Co., Ltd. was established in 2002 as an Engineering, Procurement, and Con
 
 As the demands of the sugar refinery industry became increasingly sophisticated — with clients seeking greater product diversification — ICHITA was called upon to deliver total turnkey package solutions that ensure final product quality from end to end.
 
-ICHITA is part of the **Sriarayathep Group** (Srithep Group), which distributes advanced industrial technologies including ion exchange resin, membranes, and adsorbent solutions across Thailand, focusing on liquid separation, biorefinery processes, and environmental sustainability.
+ICHITA is an affiliate company with **SRYA (Sriarayathep)**, which distributes advanced industrial technologies including ion exchange resin, membranes, and adsorbent solutions across Thailand, focusing on liquid separation, biorefinery processes, and environmental sustainability.
 
 Today, ICHITA serves as a partner to manufacturers in sugar, sweetener, beverage, and food ingredient industries, delivering advanced liquid separation and biorefinery process technologies that drive efficiency, quality, and sustainability.
 
@@ -140,7 +140,7 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 | **Headquarters** | 399/75 Phongpetnivet, Prachacheun Rd., Jatujak, Chatuchak, Bangkok 10900, Thailand |
 | **Phone** | +66 2 585 1344 |
 | **Website** | ichitaglobal.com |
-| **Group** | Sriarayathep Group |
+| **Affiliate** | SRYA (Sriarayathep) |
 
 ---
 
