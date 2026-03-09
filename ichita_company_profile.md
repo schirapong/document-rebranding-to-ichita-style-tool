@@ -35,6 +35,8 @@ Today, ICHITA serves as a partner to manufacturers in sugar, sweetener, beverage
 
 ICHITA provides end-to-end EPC services for water treatment systems and industrial process lines. From initial consultation and design through procurement and commissioning, we deliver complete solutions tailored to each client's requirements.
 
+![ICHITA water treatment system](assets/water_treatment_system.jpg)
+
 ### OEM Process Solutions
 
 Our OEM services cover a comprehensive range of process solutions:
@@ -72,6 +74,8 @@ ICHITA has invested significantly in research and development, establishing dedi
 - **Demineralization Modules** — removal of mineral content for ultra-pure applications
 - **Degasifier Modules** — dissolved gas removal systems
 
+![Membrane separation technology](assets/membrane_technology.jpg)
+
 ---
 
 ## Innovation Highlights
@@ -108,6 +112,8 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 - **Food Ingredients** — sweetener production, functional ingredient separation
 - **Beverage Manufacturing** — juice clarification, liquid sugar supply, quality assurance
 - **Water Treatment** — industrial water purification, wastewater recycling, ultrapure water systems
+
+![ICHITA industrial process solutions](assets/industrial_process.jpg)
 
 ---
 
