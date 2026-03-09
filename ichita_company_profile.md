@@ -96,16 +96,6 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 
 ---
 
-## Leadership
-
-| Name | Role |
-|------|------|
-| Chirapong Sakullachat | Chief Executive Officer |
-| Pakorn Pathomnupong | Senior Sales Engineer |
-| Somchai Junlasri | Technical Consultant |
-
----
-
 ## Industries Served
 
 - **Sugar Refining** — decolorization, purification, and product diversification
