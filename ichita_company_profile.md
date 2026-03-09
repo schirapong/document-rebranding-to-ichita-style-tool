@@ -129,7 +129,7 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 | **Employees** | 20 - 49 |
 | **Headquarters** | 399/75 Phongpetnivet, Prachacheun Rd., Jatujak, Chatuchak, Bangkok 10900, Thailand |
 | **Phone** | +66 2 585 1344 |
-| **Website** | ichitaglobal.com |
+| **Website** | www.ichita.co.th |
 | **Affiliate** | SRYA (Sriarayathep) |
 
 ---
@@ -144,7 +144,7 @@ Jatujak, Chatuchak
 Bangkok 10900, Thailand
 
 Tel: +66 2 585 1344
-Web: ichitaglobal.com
+Web: www.ichita.co.th
 
 ---
 
