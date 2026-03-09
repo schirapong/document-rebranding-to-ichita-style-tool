@@ -12,6 +12,8 @@ ICHITA Co., Ltd. was established in 2002 as an Engineering, Procurement, and Con
 
 As the demands of the sugar refinery industry became increasingly sophisticated — with clients seeking greater product diversification — ICHITA was called upon to deliver total turnkey package solutions that ensure final product quality from end to end.
 
+ICHITA is part of the **Sriarayathep Group** (Srithep Group), which distributes advanced industrial technologies including ion exchange resin, membranes, and adsorbent solutions across Thailand, focusing on water treatment, purification, separation processes, and environmental sustainability.
+
 Today, ICHITA serves as a partner to manufacturers in sugar, sweetener, beverage, and food ingredient industries, delivering advanced separation and purification technologies that drive efficiency, quality, and sustainability.
 
 ---
@@ -90,6 +92,16 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 
 ---
 
+## Leadership
+
+| Name | Role |
+|------|------|
+| Chirapong Sakullachat | Chief Executive Officer |
+| Pakorn Pathomnupong | Senior Sales Engineer |
+| Somchai Junlasri | Technical Consultant |
+
+---
+
 ## Industries Served
 
 - **Sugar Refining** — decolorization, purification, and product diversification
@@ -120,8 +132,9 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 | **Specialty** | Separation Technologies for Food & Beverage |
 | **Employees** | 20 - 49 |
 | **Headquarters** | 399/75 Phongpetnivet, Prachacheun Rd., Jatujak, Chatuchak, Bangkok 10900, Thailand |
-| **Phone** | 0-2585-1337 / 0-2585-2123 |
-| **Website** | ichitathailand.com |
+| **Phone** | +66 2 585 1344 |
+| **Website** | ichitaglobal.com |
+| **Group** | Sriarayathep Group |
 
 ---
 
@@ -134,8 +147,8 @@ For inquiries about our products and services, or to discuss your specific proce
 Jatujak, Chatuchak
 Bangkok 10900, Thailand
 
-Tel: 0-2585-1337 / 0-2585-2123
-Web: ichitathailand.com
+Tel: +66 2 585 1344
+Web: ichitaglobal.com
 
 ---
 
