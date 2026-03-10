@@ -1,4 +1,4 @@
-# ICHITA Co., Ltd.
+![](assets/Ichita_Logo-05.png)
 
 ## Company Profile
 
@@ -78,7 +78,7 @@ ICHITA has invested significantly in research and development, establishing dedi
 
 ---
 
-![ICHITA liquid sugar system](assets/liquid_sugar.png)
+![ICHITA liquid sugar process](assets/liquid_sugar_process.png)
 
 ## Innovation Highlights
 

@@ -635,12 +635,23 @@ def convert_md_to_docx(input_path, output_path):
             if not os.path.isabs(img_path):
                 img_path = os.path.join(os.path.dirname(os.path.abspath(input_path)), img_path)
             if os.path.exists(img_path):
+                # Detect title-page logo (first image, logo filename)
+                is_title_logo = first_h1 and 'logo' in os.path.basename(img_path).lower()
                 p = doc.add_paragraph()
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.paragraph_format.space_before = Pt(8)
-                p.paragraph_format.space_after = Pt(4)
-                run = p.add_run()
-                run.add_picture(img_path, width=Inches(5.5))
+                if is_title_logo:
+                    p.paragraph_format.space_before = Pt(40)
+                    p.paragraph_format.space_after = Pt(6)
+                    run = p.add_run()
+                    run.add_picture(img_path, width=Inches(3.0))
+                    first_h1 = False
+                    # Add decorative blue band below title logo
+                    add_title_page_band(doc)
+                else:
+                    p.paragraph_format.space_before = Pt(8)
+                    p.paragraph_format.space_after = Pt(4)
+                    run = p.add_run()
+                    run.add_picture(img_path, width=Inches(5.5))
                 # Add caption if alt text provided
                 if alt_text:
                     cap = doc.add_paragraph()
