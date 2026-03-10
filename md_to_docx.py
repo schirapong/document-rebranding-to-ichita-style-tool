@@ -544,12 +544,19 @@ def convert_md_to_docx(input_path, output_path, logo_path=None):
             heading_text = heading_match.group(2).strip()
 
             if level == 1 and first_h1:
-                # ── Title: centered, large, Ichita brand ──
-                p = doc.add_heading('', level=1)
+                # ── Title: Ichita logo image centered, with subtitle text below ──
+                p = doc.add_paragraph()
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                clean_text = re.sub(r'\*\*(.+?)\*\*', r'\1', heading_text)
-                _add_split_run(p, clean_text, BRAND_FONT, Pt(26),
-                               ICHITA_BLUE_GREY3, bold=True)
+                p.paragraph_format.space_before = Pt(48)
+                p.paragraph_format.space_after = Pt(8)
+                if os.path.exists(logo_path):
+                    run = p.add_run()
+                    run.add_picture(logo_path, width=Inches(3.5))
+                else:
+                    # Fallback: text-based title
+                    clean_text = re.sub(r'\*\*(.+?)\*\*', r'\1', heading_text)
+                    _add_split_run(p, clean_text, BRAND_FONT, Pt(26),
+                                   ICHITA_BLUE_GREY3, bold=True)
                 first_h1 = False
                 i += 1
 
@@ -648,6 +655,41 @@ def convert_md_to_docx(input_path, output_path, logo_path=None):
 
             p.clear()
             add_formatted_text(p, bullet_text)
+            i += 1
+            continue
+
+        # ── Inline image ![caption](path) ──
+        image_match = re.match(r'^!\[([^\]]*)\]\(([^)]+)\)\s*$', stripped)
+        if image_match:
+            caption = image_match.group(1).strip()
+            img_path = image_match.group(2).strip()
+            # Resolve relative to markdown file directory
+            if not os.path.isabs(img_path):
+                img_path = os.path.join(os.path.dirname(os.path.abspath(input_path)), img_path)
+            if os.path.exists(img_path):
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.paragraph_format.space_before = Pt(6)
+                p.paragraph_format.space_after = Pt(2)
+                run = p.add_run()
+                run.add_picture(img_path, width=Inches(5.0))
+                if caption:
+                    # Caption below image
+                    cp = doc.add_paragraph()
+                    cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cp.paragraph_format.space_before = Pt(2)
+                    cp.paragraph_format.space_after = Pt(8)
+                    _add_split_run(cp, caption, BRAND_FONT, Pt(9),
+                                   ICHITA_BLUE_GREY2, bold=False, italic=True)
+            else:
+                # Image not found — show placeholder text
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.paragraph_format.space_before = Pt(6)
+                p.paragraph_format.space_after = Pt(6)
+                placeholder = f"[Image: {caption or img_path}]"
+                _add_split_run(p, placeholder, BRAND_FONT, Pt(9),
+                               ICHITA_BLUE_GREY2, bold=False, italic=True)
             i += 1
             continue
 
