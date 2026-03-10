@@ -73,13 +73,7 @@ for _fd in _font_dirs:
 # ── Logo Path ─────────────────────────────────────────────────────────────────
 # Logo-05: dark wordmark on white/transparent background — ideal for headers
 # Resolve relative to script location so it works from any working directory
-_LOGO_CANDIDATES = [
-    os.path.join(_SCRIPT_DIR, "..", "assets", "Ichita_Logo-05.png"),
-    os.path.join(_SCRIPT_DIR, "..", "ichita brand ID",
-                 "ICHITA BRAND BOOK AND COMPANY PROFILE", "LogoV2 3",
-                 "Digital", "PNG", "Wordmark", "Ichita_Logo-05.png"),
-]
-LOGO_PATH = next((p for p in _LOGO_CANDIDATES if os.path.exists(p)), _LOGO_CANDIDATES[-1])
+LOGO_PATH = os.path.join(_SCRIPT_DIR, "..", "assets", "Ichita_Logo-05.png")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

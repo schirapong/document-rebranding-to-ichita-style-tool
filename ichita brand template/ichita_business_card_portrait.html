@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICHITA Business Card — Portrait — Chirapong Sakullachat</title>
+<style>
+  /* Aeonik — Ichita brand font (local .woff2 from Aeonik-Essentials-Web/) */
+  @font-face {
+    font-family: 'Aeonik';
+    src: url('Aeonik-Essentials-Web/Aeonik-Light.woff2') format('woff2'),
+         url('Aeonik-Essentials-Web/Aeonik-Light.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Aeonik';
+    src: url('Aeonik-Essentials-Web/Aeonik-Regular.woff2') format('woff2'),
+         url('Aeonik-Essentials-Web/Aeonik-Regular.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Aeonik';
+    src: url('Aeonik-Essentials-Web/Aeonik-Bold.woff2') format('woff2'),
+         url('Aeonik-Essentials-Web/Aeonik-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  :root {
+    --blue: #2978FF;
+    --blue-light: #82B0FF;
+    --blue-grey-01: #CFD9DB;
+    --blue-grey-02: #788F9C;
+    --blue-grey-03: #263338;
+    --blue-black: #171C21;
+    --white: #FFFFFF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a1a;
+    font-family: 'Aeonik', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 60px 20px;
+    gap: 60px;
+  }
+
+  h2 {
+    color: #999;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+  }
+
+  .card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .cards-row {
+    display: flex;
+    gap: 50px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Portrait business card: 55mm x 90mm — scaled for display */
+  .card {
+    width: 311px;
+    height: 510px;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* ==============================
+     FRONT — Bilingual Side
+     ============================== */
+  .card-front {
+    background: var(--white);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .front-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 28px 26px 22px 26px;
+  }
+
+  /* Top: Wordmark */
+  .front-top {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .front-wordmark svg {
+    height: 24px;
+    width: auto;
+  }
+
+  .front-descriptor-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .front-descriptor-group svg {
+    height: 15px;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .front-descriptor {
+    font-size: 11px;
+    color: var(--blue-grey-02);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Middle: Name & Title */
+  .front-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .name-en {
+    font-size: 21.5px;
+    font-weight: 600;
+    color: var(--blue-grey-03);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+
+  .name-th {
+    font-size: 17.5px;
+    font-weight: 500;
+    color: var(--blue-grey-02);
+    line-height: 1.3;
+    margin-top: 1px;
+  }
+
+  .title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+  }
+
+  .title-en {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--blue-grey-02);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .title-th {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--blue-grey-02);
+  }
+
+  /* Separator */
+  .separator {
+    width: 28px;
+    height: 1px;
+    background: var(--blue);
+    opacity: 0.5;
+    margin: 10px 0;
+  }
+
+  /* Bottom: Contact + Addresses stacked */
+  .front-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .front-contact-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .front-contact-col span {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--blue-grey-03);
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+  }
+
+  .front-contact-col .label {
+    color: var(--blue);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .front-addresses {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .addr {
+    font-size: 12.5px;
+    color: var(--blue-grey-02);
+    line-height: 1.5;
+  }
+
+  .addr-divider {
+    width: 40px;
+    height: 1px;
+    background: var(--blue-grey-01);
+    opacity: 0.6;
+  }
+
+  /* Blue accent bar on left */
+  .front-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--blue);
+  }
+
+
+  /* ==============================
+     BACK — Ichita Brand Design
+     ============================== */
+  .card-back {
+    background: var(--blue-grey-03);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Geometric pattern overlay */
+  .back-pattern-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    opacity: 0.06;
+  }
+
+  .pattern-bars {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 280px;
+    align-items: center;
+  }
+
+  .pattern-bar {
+    background: var(--white);
+    border-radius: 1px;
+  }
+
+  .pattern-bar:nth-child(1) { width: 100%; height: 50px; }
+  .pattern-bar:nth-child(2) { width: 100%; height: 32px; }
+  .pattern-bar:nth-child(3) { width: 100%; height: 18px; }
+  .pattern-bar:nth-child(4) { width: 100%; height: 10px; }
+  .pattern-bar:nth-child(5) { width: 100%; height: 5px; }
+
+  /* Blue accent glow on left */
+  .back-glow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--blue);
+    z-index: 2;
+  }
+
+  .back-glow-soft {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100px;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(41,120,255,0.08) 0%, transparent 100%);
+  }
+
+  /* Center content */
+  .back-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    gap: 24px;
+  }
+
+  .back-symbol svg {
+    height: 120px;
+    width: auto;
+    opacity: 0.9;
+  }
+
+  .back-wordmark svg {
+    height: 26px;
+    width: auto;
+  }
+
+  .back-descriptor {
+    font-size: 11px;
+    color: var(--blue-grey-02);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-top: -10px;
+  }
+
+  .back-website {
+    position: absolute;
+    bottom: 26px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--blue);
+    letter-spacing: 0.06em;
+    z-index: 2;
+  }
+
+  /* Blue accent bar at bottom */
+  .back-accent {
+    height: 4px;
+    background: var(--blue);
+    width: 100%;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Print guide */
+  .print-info {
+    color: #555;
+    font-size: 10px;
+    text-align: center;
+    margin-top: 40px;
+    line-height: 1.8;
+  }
+
+  .print-info strong { color: #888; }
+</style>
+</head>
+<body>
+
+<div class="cards-row">
+
+<!-- ==================== FRONT — Bilingual ==================== -->
+<div class="card-container">
+  <h2>Front — Bilingual</h2>
+  <div class="card card-front">
+    <div class="front-accent"></div>
+    <div class="front-main">
+
+      <!-- Top: Wordmark + Symbol & Descriptor -->
+      <div class="front-top">
+        <div class="front-wordmark">
+          <svg viewBox="177 100 725 105" xmlns="http://www.w3.org/2000/svg">
+            <rect x="177.56" y="102.75" width="24.31" height="97.25" fill="#263338"/>
+            <polygon points="526.05 135.16 420.7 135.16 420.7 102.75 396.38 102.75 396.38 200 420.7 200 420.7 159.48 526.05 159.48 526.05 200 550.37 200 550.37 102.75 526.05 102.75 526.05 135.16" fill="#263338"/>
+            <rect x="566.58" y="102.75" width="24.31" height="97.25" fill="#263338"/>
+            <polygon points="902.44 200 846.29 102.75 820.81 102.75 818.4 102.75 792.92 102.75 736.77 200 764.66 200 819.63 102.75 874.54 200 902.44 200" fill="#263338"/>
+            <path d="M216.85,150.47v1.8c0,26.36,21.37,47.73,47.73,47.73h115.6s0-20.71,0-20.71H245.17c-2.21,0-4-1.79-4-4v-47.9c0-2.21,1.79-4,4-4h135.01v-20.65h-115.6c-26.36,0-47.73,21.37-47.73,47.73Z" fill="#263338"/>
+            <polygon points="607.1 102.75 607.1 123.46 671.93 123.46 671.93 200 696.25 200 696.25 123.46 761.08 123.46 761.08 102.75 607.1 102.75" fill="#263338"/>
+            <polygon points="882.66 105.46 883.3 105.46 886.58 118.65 891.07 118.65 894.42 105.46 895.06 105.46 895.06 118.65 897.91 118.65 897.91 102.83 892.43 102.83 889.15 116.01 888.58 116.01 885.23 102.83 879.74 102.83 879.74 118.65 882.66 118.65 882.66 105.46" fill="#263338"/>
+            <polygon points="869.41 118.65 872.33 118.65 872.33 105.46 877.6 105.46 877.6 102.83 864.06 102.83 864.06 105.46 869.41 105.46 869.41 118.65" fill="#263338"/>
+          </svg>
+        </div>
+        <div class="front-descriptor-group">
+          <!-- Arrow X symbol (rotated 90°) -->
+          <svg viewBox="300 270 480 540" xmlns="http://www.w3.org/2000/svg">
+            <g transform="rotate(90, 540, 540)">
+              <path d="M391.7,290h-74L462,540L317.7,790h74l113.2-196c19.3-33.4,19.3-74.5,0-107.9L391.7,290L391.7,290z" fill="#2978FF"/>
+              <path d="M688.3,790h74L618,540l144.3-250h-74L575.1,486c-19.3,33.4-19.3,74.5,0,107.9L688.3,790L688.3,790z" fill="#2978FF"/>
+            </g>
+          </svg>
+          <div class="front-descriptor">Separation Technologies</div>
+        </div>
+      </div>
+
+      <!-- Middle: Bilingual Name & Title -->
+      <div class="front-middle">
+        <div>
+          <div class="name-en">Chirapong<br>Sakullachat</div>
+          <div class="name-th">จิรพงษ์ สกุลชาติ</div>
+        </div>
+        <div class="title-block">
+          <div class="title-en">Chief Executive Officer</div>
+          <div class="title-th">ประธานเจ้าหน้าที่บริหาร</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="separator"></div>
+
+        <!-- Bottom: Contact + Addresses -->
+        <div class="front-bottom">
+          <div class="front-contact-col">
+            <span><span class="label">E</span>&nbsp;&nbsp;chirapong@srithepgroup.com</span>
+            <span><span class="label">T</span>&nbsp;&nbsp;+66 81 841 7210</span>
+            <span><span class="label">W</span>&nbsp;&nbsp;ichita.co.th</span>
+          </div>
+          <div class="front-addresses">
+            <div class="addr">
+              399/75 Prachachuen Rd., Soi Pongpetchnivet,<br>
+              Jatujak, Bangkok 10900, Thailand
+            </div>
+            <div class="addr-divider"></div>
+            <div class="addr">
+              399/75 ซอยพงษ์เพชรนิเวศน์ ถนนประชาชื่น<br>
+              เขตจตุจักร กรุงเทพฯ 10900
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== BACK — Ichita Brand Design ==================== -->
+<div class="card-container">
+  <h2>Back — Brand Design</h2>
+  <div class="card card-back">
+
+    <!-- Pattern overlay -->
+    <div class="back-pattern-layer">
+      <div class="pattern-bars">
+        <div class="pattern-bar"></div>
+        <div class="pattern-bar"></div>
+        <div class="pattern-bar"></div>
+        <div class="pattern-bar"></div>
+        <div class="pattern-bar"></div>
+      </div>
+    </div>
+
+    <!-- Blue accent glow -->
+    <div class="back-glow"></div>
+    <div class="back-glow-soft"></div>
+
+    <!-- Center: Symbol + Wordmark -->
+    <div class="back-content">
+      <div class="back-symbol">
+        <!-- Arrow X symbol (rotated 90°) -->
+        <svg viewBox="300 270 480 540" xmlns="http://www.w3.org/2000/svg">
+          <g transform="rotate(90, 540, 540)">
+            <path d="M391.7,290h-74L462,540L317.7,790h74l113.2-196c19.3-33.4,19.3-74.5,0-107.9L391.7,290L391.7,290z" fill="#FFFFFF"/>
+            <path d="M688.3,790h74L618,540l144.3-250h-74L575.1,486c-19.3,33.4-19.3,74.5,0,107.9L688.3,790L688.3,790z" fill="#FFFFFF"/>
+          </g>
+        </svg>
+      </div>
+      <div class="back-wordmark">
+        <svg viewBox="177 100 725 105" xmlns="http://www.w3.org/2000/svg">
+          <rect x="177.56" y="102.75" width="24.31" height="97.25" fill="#FFFFFF"/>
+          <polygon points="526.05 135.16 420.7 135.16 420.7 102.75 396.38 102.75 396.38 200 420.7 200 420.7 159.48 526.05 159.48 526.05 200 550.37 200 550.37 102.75 526.05 102.75 526.05 135.16" fill="#FFFFFF"/>
+          <rect x="566.58" y="102.75" width="24.31" height="97.25" fill="#FFFFFF"/>
+          <polygon points="902.44 200 846.29 102.75 820.81 102.75 818.4 102.75 792.92 102.75 736.77 200 764.66 200 819.63 102.75 874.54 200 902.44 200" fill="#FFFFFF"/>
+          <path d="M216.85,150.47v1.8c0,26.36,21.37,47.73,47.73,47.73h115.6s0-20.71,0-20.71H245.17c-2.21,0-4-1.79-4-4v-47.9c0-2.21,1.79-4,4-4h135.01v-20.65h-115.6c-26.36,0-47.73,21.37-47.73,47.73Z" fill="#FFFFFF"/>
+          <polygon points="607.1 102.75 607.1 123.46 671.93 123.46 671.93 200 696.25 200 696.25 123.46 761.08 123.46 761.08 102.75 607.1 102.75" fill="#FFFFFF"/>
+          <polygon points="882.66 105.46 883.3 105.46 886.58 118.65 891.07 118.65 894.42 105.46 895.06 105.46 895.06 118.65 897.91 118.65 897.91 102.83 892.43 102.83 889.15 116.01 888.58 116.01 885.23 102.83 879.74 102.83 879.74 118.65 882.66 118.65 882.66 105.46" fill="#FFFFFF"/>
+          <polygon points="869.41 118.65 872.33 118.65 872.33 105.46 877.6 105.46 877.6 102.83 864.06 102.83 864.06 105.46 869.41 105.46 869.41 118.65" fill="#FFFFFF"/>
+        </svg>
+      </div>
+      <div class="back-descriptor">Separation Technologies</div>
+    </div>
+
+    <div class="back-website">ichita.co.th</div>
+    <div class="back-accent"></div>
+  </div>
+</div>
+
+</div><!-- end cards-row -->
+
+<!-- Print specs -->
+<div class="print-info">
+  <strong>Print Specifications — Portrait</strong><br>
+  Size: 55 mm &times; 90 mm (5.5 &times; 9 cm) &nbsp;|&nbsp; Bleed: 3mm &nbsp;|&nbsp; Corner radius: 3mm<br>
+  Paper: 350gsm uncoated &nbsp;|&nbsp; Finish: Soft-touch laminate + spot UV on logo<br>
+  Colours: CMYK + PMS 2132 (Blue accent) &nbsp;|&nbsp; Font: Aeonik (Regular, Medium, Bold)
+</div>
+
+</body>
+</html>

@@ -83,12 +83,7 @@ for _fd in _font_dirs:
 
 # ── Default Logo Path (resolved relative to script) ─────────────────────────
 
-_LOGO_ASSET = os.path.join(SCRIPT_DIR, "assets", "Ichita_Logo-05.png")
-_LOGO_BRAND_ID = os.path.join(
-    SCRIPT_DIR, "ichita brand ID",
-    "ICHITA BRAND BOOK AND COMPANY PROFILE", "LogoV2 3",
-    "Digital", "PNG", "Wordmark", "Ichita_Logo-05.png")
-DEFAULT_LOGO = _LOGO_ASSET if os.path.exists(_LOGO_ASSET) else _LOGO_BRAND_ID
+DEFAULT_LOGO = os.path.join(SCRIPT_DIR, "assets", "Ichita_Logo-05.png")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

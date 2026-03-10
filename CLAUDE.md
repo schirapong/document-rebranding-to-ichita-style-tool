@@ -71,7 +71,7 @@ Deep-copies source DOCX body, then applies 20-step pipeline at XML level:
 
 **Heading detection**: Uses style ID sets (`KNOWN_TITLE_STYLES`, `KNOWN_SUBTITLE_STYLES`, `KNOWN_TOPIC_STYLES`) for common Thai templates, plus `detect_heading()` regex for text-based detection.
 
-**Logo resolution**: Defaults to bundled `ichita brand ID/.../Wordmark/Ichita_Logo-05.png`. Override with `--logo`.
+**Logo resolution**: Defaults to `assets/Ichita_Logo-05.png`. Override with `--logo`.
 
 ### md_to_docx.py — Markdown Converter
 
