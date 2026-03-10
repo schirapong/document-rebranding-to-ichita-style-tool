@@ -120,7 +120,9 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 
 ---
 
-## Company Information
+## Contact Us
+
+For inquiries about our products and services, or to discuss your specific process requirements, please reach out to our team.
 
 | | |
 |---|---|
@@ -128,26 +130,8 @@ ICHITA has developed a revolutionary approach to purify sugar derivatives — in
 | **Founded** | 2002 |
 | **Industry** | Liquid Separation & Biorefinery Process Technologies |
 | **Specialty** | Separation Technologies for Food, Beverage & Bioindustry |
-| **Employees** | 20 - 49 |
+| **Employees** | 40 |
 | **Headquarters** | 399/75 Phongpetnivet, Prachacheun Rd., Jatujak, Chatuchak, Bangkok 10900, Thailand |
 | **Phone** | +66 2 585 1344 |
 | **Website** | www.ichita.co.th |
 | **Affiliate** | SRYA (Sriarayathep) |
-
----
-
-## Contact Us
-
-For inquiries about our products and services, or to discuss your specific process requirements, please reach out to our team.
-
-**ICHITA Co., Ltd.**
-399/75 Phongpetnivet, Prachacheun Rd.
-Jatujak, Chatuchak
-Bangkok 10900, Thailand
-
-Tel: +66 2 585 1344
-Web: www.ichita.co.th
-
----
-
-*ICHITA — Separation Technologies*

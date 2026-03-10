@@ -302,9 +302,17 @@ def add_table_from_rows(doc, header_cells, data_rows):
 
 
 def add_header_footer(doc, logo_path):
-    """Add ICHITA logo to header and branded footer to all sections."""
+    """Add ICHITA logo to header and branded footer to all sections.
+    First page has no header (to avoid duplicating the title logo)."""
     for section in doc.sections:
-        # ── Header ──
+        # Hide header on first page
+        section.different_first_page_header_footer = True
+        # Leave first-page header empty
+        first_header = section.first_page_header
+        for p in first_header.paragraphs:
+            p.clear()
+
+        # ── Header (pages 2+) ──
         header = section.header
         header.is_linked_to_previous = False
 
