@@ -626,6 +626,32 @@ def convert_md_to_docx(input_path, output_path):
             i += 1
             continue
 
+        # ── Image (![alt](path)) ──
+        img_match = re.match(r'^!\[([^\]]*)\]\(([^)]+)\)\s*$', stripped)
+        if img_match:
+            alt_text = img_match.group(1)
+            img_path = img_match.group(2)
+            # Resolve relative to the markdown file's directory
+            if not os.path.isabs(img_path):
+                img_path = os.path.join(os.path.dirname(os.path.abspath(input_path)), img_path)
+            if os.path.exists(img_path):
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.paragraph_format.space_before = Pt(8)
+                p.paragraph_format.space_after = Pt(4)
+                run = p.add_run()
+                run.add_picture(img_path, width=Inches(5.5))
+                # Add caption if alt text provided
+                if alt_text:
+                    cap = doc.add_paragraph()
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap.paragraph_format.space_before = Pt(2)
+                    cap.paragraph_format.space_after = Pt(8)
+                    _add_split_run(cap, alt_text, BRAND_FONT, Pt(8),
+                                   ICHITA_BLUE_GREY2, italic=True)
+            i += 1
+            continue
+
         # ── Empty line ──
         if not stripped.strip():
             i += 1
