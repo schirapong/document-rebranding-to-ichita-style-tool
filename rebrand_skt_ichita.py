@@ -51,7 +51,9 @@ BRAND_FONT = "Avenir Next"
 THAI_FONT  = "Bai Jamjuree"  # Thai font with matched metrics to geometric sans-serif
 THAI_SCALE = 0.9              # Thai 9pt / English 10pt — one size down for visual balance
 
-# Check system font dirs + bundled Aeonik-Essentials-Web for Aeonik
+# Font priority: TH Aeonik (unified Latin+Thai) > Aeonik + Bai Jamjuree (separate)
+TH_AEONIK_MODE = False  # True = single font for both Latin+Thai
+
 _font_dirs = [
     os.path.expanduser("~/Library/Fonts"),
     "/Library/Fonts",
@@ -59,11 +61,28 @@ _font_dirs = [
     os.path.expanduser("~/.local/share/fonts"),
     os.path.join(SCRIPT_DIR, "Aeonik-Essentials-Web"),
 ]
+
+# Check for TH Aeonik first (preferred — single font covers Latin+Thai)
 for _fd in _font_dirs:
-    if os.path.isdir(_fd):
-        if any("aeonik" in f.lower() for f in os.listdir(_fd)):
-            BRAND_FONT = "Aeonik"
+    try:
+        if any("th-aeonik" in f.lower() or "thaeonik" in f.lower() for f in os.listdir(_fd)):
+            BRAND_FONT = "TH Aeonik"
+            THAI_FONT = "TH Aeonik"
+            THAI_SCALE = 1.0  # Same font, no scaling needed
+            TH_AEONIK_MODE = True
             break
+    except OSError:
+        pass
+
+# Fallback: check for Aeonik (Latin only, needs Bai Jamjuree for Thai)
+if not TH_AEONIK_MODE:
+    for _fd in _font_dirs:
+        try:
+            if any("aeonik" in f.lower() for f in os.listdir(_fd)):
+                BRAND_FONT = "Aeonik"
+                break
+        except OSError:
+            pass
 
 
 # ── Default Logo Path (resolved relative to script) ─────────────────────────
@@ -169,6 +188,10 @@ def split_run_thai_latin(run_elem, parent_elem):
     if t_elem is None or not t_elem.text:
         return
 
+    # TH Aeonik handles all scripts — no splitting needed
+    if TH_AEONIK_MODE:
+        return
+
     text = t_elem.text
     segments = _split_thai_latin(text)
 
@@ -252,19 +275,30 @@ def set_font(run_elem, font_name=None, size_pt=None, color_hex=None, bold=None):
     run_text = t_elem.text if t_elem is not None and t_elem.text else ""
     is_thai = _text_is_thai(run_text) and not _text_is_mixed(run_text)
 
-    # ── Font name — Thai gets Bai Jamjuree, Latin gets BRAND_FONT ──
-    actual_font = THAI_FONT if is_thai else font_name
+    # ── Font name ──
+    if TH_AEONIK_MODE:
+        # Single font handles all scripts
+        actual_font = BRAND_FONT
+    else:
+        # Thai gets Bai Jamjuree, Latin gets BRAND_FONT
+        actual_font = THAI_FONT if is_thai else font_name
     rf = rPr.find(qn('w:rFonts'))
     if rf is None:
         rf = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
         rPr.insert(0, rf)
-    for attr in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
-        rf.set(qn(attr), actual_font)
+    if TH_AEONIK_MODE:
+        rf.set(qn('w:ascii'), BRAND_FONT)
+        rf.set(qn('w:hAnsi'), BRAND_FONT)
+        rf.set(qn('w:cs'), BRAND_FONT)
+        rf.set(qn('w:eastAsia'), BRAND_FONT)
+    else:
+        for attr in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
+            rf.set(qn(attr), actual_font)
 
     # ── Size (half-points) ──
-    # Thai text gets scaled down by THAI_SCALE for visual balance
+    # Thai text gets scaled down by THAI_SCALE for visual balance (no-op when THAI_SCALE=1.0)
     if size_pt is not None:
-        if is_thai:
+        if is_thai and not TH_AEONIK_MODE:
             hp = str(int(size_pt * THAI_SCALE * 2))
         else:
             hp = str(int(size_pt * 2))
@@ -697,11 +731,17 @@ def add_header_footer(doc, logo_path):
             f'</w:pBdr>')
         pPr.append(pBdr)
 
-        # ── Footer (clear) ──
+        # ── Footer ──
         footer = section.footer
         footer.is_linked_to_previous = False
         for p in footer.paragraphs:
             p.clear()
+        fp = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+        fp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        fr = fp.add_run("www.ichita.co.th")
+        fr.font.size = Pt(9)
+        fr.font.color.rgb = RGBColor(0x78, 0x8F, 0x9C)  # Blue Grey 02
+        fr.font.name = BRAND_FONT
 
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
@@ -776,18 +816,28 @@ def make_para(text="", size_pt=12, color_hex=HEX_DARK, bold=False,
     p = parse_xml(f'<w:p {nsdecls("w")}/>')
 
     if text:
-        # Split into Thai/Latin segments for proper font assignment
-        segments = _split_thai_latin(text)
-        for seg_text, is_thai in segments:
+        if TH_AEONIK_MODE:
+            # Single font handles all scripts — no splitting needed
             r = parse_xml(f'<w:r {nsdecls("w")}/>')
             t = parse_xml(f'<w:t {nsdecls("w")}/>')
-            t.text = seg_text
+            t.text = text
             t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
             r.append(t)
-            font = THAI_FONT if is_thai else BRAND_FONT
-            sz = size_pt * THAI_SCALE if is_thai else size_pt
-            set_font(r, font_name=font, size_pt=sz, color_hex=color_hex, bold=bold)
+            set_font(r, font_name=BRAND_FONT, size_pt=size_pt, color_hex=color_hex, bold=bold)
             p.append(r)
+        else:
+            # Split into Thai/Latin segments for proper font assignment
+            segments = _split_thai_latin(text)
+            for seg_text, is_thai in segments:
+                r = parse_xml(f'<w:r {nsdecls("w")}/>')
+                t = parse_xml(f'<w:t {nsdecls("w")}/>')
+                t.text = seg_text
+                t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+                r.append(t)
+                font = THAI_FONT if is_thai else BRAND_FONT
+                sz = size_pt * THAI_SCALE if is_thai else size_pt
+                set_font(r, font_name=font, size_pt=sz, color_hex=color_hex, bold=bold)
+                p.append(r)
 
     pPr = ensure_pPr(p)
     if align != 'left':
@@ -1033,7 +1083,10 @@ def rebrand(source, output, logo=None):
 
     print(f"Source: {os.path.basename(source)}")
     print(f"Output: {os.path.basename(output)}")
-    print(f"Font:   {BRAND_FONT}")
+    if TH_AEONIK_MODE:
+        print(f"Font:   {BRAND_FONT} (unified Latin+Thai)")
+    else:
+        print(f"Font:   {BRAND_FONT}")
 
     src_doc = Document(source)
     dst_doc = Document()
@@ -1322,8 +1375,14 @@ def rebrand(source, output, logo=None):
     if n_rFonts is None:
         n_rFonts = parse_xml(f'<w:rFonts {nsdecls("w")}/>')
         n_rPr.insert(0, n_rFonts)
-    n_rFonts.set(qn('w:cs'), THAI_FONT)
-    n_rFonts.set(qn('w:eastAsia'), THAI_FONT)
+    if TH_AEONIK_MODE:
+        n_rFonts.set(qn('w:ascii'), BRAND_FONT)
+        n_rFonts.set(qn('w:hAnsi'), BRAND_FONT)
+        n_rFonts.set(qn('w:cs'), BRAND_FONT)
+        n_rFonts.set(qn('w:eastAsia'), BRAND_FONT)
+    else:
+        n_rFonts.set(qn('w:cs'), THAI_FONT)
+        n_rFonts.set(qn('w:eastAsia'), THAI_FONT)
 
     # ── ICHITA header/footer on every page ──
     add_header_footer(dst_doc, logo)
@@ -1344,7 +1403,10 @@ def rebrand(source, output, logo=None):
     print(f"  Tables:     {tbl_count}")
     print(f"  Images:     {img_count} blip references")
     print(f"  Sections:   {section_count}")
-    print(f"  Font:       {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
+    if TH_AEONIK_MODE:
+        print(f"  Font:       {BRAND_FONT} (unified Latin+Thai)")
+    else:
+        print(f"  Font:       {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
     print(f"  Brand:      ICHITA -- Separation Technologies")
     print(f"{'='*60}")
 

@@ -67,7 +67,9 @@ THAI_FONT  = "Bai Jamjuree" # Thai font with matched metrics to geometric sans-s
 THAI_SCALE = 0.9             # Thai 9pt / English 10pt — Bai Jamjuree one size down for visual balance
 MONO_FONT  = "Courier New"
 
-# Check system font dirs + bundled Aeonik-Essentials-Web for Aeonik
+# Font priority: TH Aeonik (unified Latin+Thai) > Aeonik + Bai Jamjuree (separate)
+TH_AEONIK_MODE = False  # True = single font for both Latin+Thai
+
 _font_dirs = [
     os.path.expanduser("~/Library/Fonts"),
     "/Library/Fonts",
@@ -75,11 +77,28 @@ _font_dirs = [
     os.path.expanduser("~/.local/share/fonts"),
     os.path.join(SCRIPT_DIR, "Aeonik-Essentials-Web"),
 ]
+
+# Check for TH Aeonik first (preferred — single font covers Latin+Thai)
 for _fd in _font_dirs:
-    if os.path.isdir(_fd):
-        if any("aeonik" in f.lower() for f in os.listdir(_fd)):
-            BRAND_FONT = "Aeonik"
+    try:
+        if any("th-aeonik" in f.lower() or "thaeonik" in f.lower() for f in os.listdir(_fd)):
+            BRAND_FONT = "TH Aeonik"
+            THAI_FONT = "TH Aeonik"
+            THAI_SCALE = 1.0  # Same font, no scaling needed
+            TH_AEONIK_MODE = True
             break
+    except OSError:
+        pass
+
+# Fallback: check for Aeonik (Latin only, needs Bai Jamjuree for Thai)
+if not TH_AEONIK_MODE:
+    for _fd in _font_dirs:
+        try:
+            if any("aeonik" in f.lower() for f in os.listdir(_fd)):
+                BRAND_FONT = "Aeonik"
+                break
+        except OSError:
+            pass
 
 # ── Default Logo Path (resolved relative to script) ─────────────────────────
 
@@ -121,7 +140,21 @@ def _split_thai_latin(text):
 def _add_split_run(paragraph, text, font_name, base_size, color, bold=False,
                    italic=False, underline=False, is_link=False):
     """Add text as split Thai/Latin runs with different fonts and sizes.
-    Thai segments get Bai Jamjuree at scaled size, Latin gets Aeonik at base size."""
+    Thai segments get Bai Jamjuree at scaled size, Latin gets Aeonik at base size.
+    When TH_AEONIK_MODE is True, a single run with BRAND_FONT is used for all text."""
+    if TH_AEONIK_MODE:
+        run = paragraph.add_run(text)
+        run.font.name = BRAND_FONT
+        run.font.size = base_size
+        run.font.color.rgb = color
+        if bold:
+            run.font.bold = True
+        if italic:
+            run.font.italic = True
+        if underline:
+            run.font.underline = True
+        return run if text else None
+
     thai_size = Pt(round(base_size / 12700 * THAI_SCALE * 2) / 2)  # EMU → pt, scale, back to EMU
     for segment, is_thai in _split_thai_latin(text):
         run = paragraph.add_run(segment)
@@ -352,11 +385,17 @@ def add_header_footer(doc, logo_path):
         )
         pPr.append(pBdr)
 
-        # ── Footer — disabled ──
+        # ── Footer ──
         footer = section.footer
         footer.is_linked_to_previous = False
         for p in footer.paragraphs:
             p.clear()
+        fp = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+        fp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        fr = fp.add_run("www.ichita.co.th")
+        fr.font.size = Pt(9)
+        fr.font.color.rgb = RGBColor(0x78, 0x8F, 0x9C)  # Blue Grey 02
+        fr.font.name = BRAND_FONT
 
 
 def add_title_page_band(doc):
@@ -407,8 +446,14 @@ def convert_md_to_docx(input_path, output_path, logo_path=None):
     if rFonts is None:
         rFonts = OxmlElement('w:rFonts')
         rPr.insert(0, rFonts)
-    rFonts.set(qn('w:cs'), THAI_FONT)
-    rFonts.set(qn('w:eastAsia'), THAI_FONT)
+    if TH_AEONIK_MODE:
+        rFonts.set(qn('w:ascii'), BRAND_FONT)
+        rFonts.set(qn('w:hAnsi'), BRAND_FONT)
+        rFonts.set(qn('w:cs'), BRAND_FONT)
+        rFonts.set(qn('w:eastAsia'), BRAND_FONT)
+    else:
+        rFonts.set(qn('w:cs'), THAI_FONT)
+        rFonts.set(qn('w:eastAsia'), THAI_FONT)
     scaled_hp = str(round(10 * 2 * THAI_SCALE))
     szCs_el = rPr.find(qn('w:szCs'))
     if szCs_el is not None:
@@ -437,8 +482,14 @@ def convert_md_to_docx(input_path, output_path, logo_path=None):
         if h_rFonts is None:
             h_rFonts = OxmlElement('w:rFonts')
             h_rPr.insert(0, h_rFonts)
-        h_rFonts.set(qn('w:cs'), THAI_FONT)
-        h_rFonts.set(qn('w:eastAsia'), THAI_FONT)
+        if TH_AEONIK_MODE:
+            h_rFonts.set(qn('w:ascii'), BRAND_FONT)
+            h_rFonts.set(qn('w:hAnsi'), BRAND_FONT)
+            h_rFonts.set(qn('w:cs'), BRAND_FONT)
+            h_rFonts.set(qn('w:eastAsia'), BRAND_FONT)
+        else:
+            h_rFonts.set(qn('w:cs'), THAI_FONT)
+            h_rFonts.set(qn('w:eastAsia'), THAI_FONT)
         h_scaled_hp = str(round(size * 2 * THAI_SCALE))
         h_szCs = h_rPr.find(qn('w:szCs'))
         if h_szCs is not None:
@@ -672,7 +723,10 @@ def convert_md_to_docx(input_path, output_path, logo_path=None):
     print(f"Saved: {output_path}")
     print(f"  Size: {size:,} bytes ({size/1024:.1f} KB)")
     print(f"  Paragraphs: {para_count}, Tables: {table_count}")
-    print(f"  Font: {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
+    if TH_AEONIK_MODE:
+        print(f"  Font: {BRAND_FONT} (unified Latin+Thai)")
+    else:
+        print(f"  Font: {BRAND_FONT} + {THAI_FONT} (Thai, {THAI_SCALE}x)")
     print(f"  Brand: ICHITA -- Separation Technologies")
 
 
