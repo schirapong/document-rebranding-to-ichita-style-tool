@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="61mm" height="96mm"
+     viewBox="0 0 61 96">
+<defs>
+  <style>
+    @font-face {
+      font-family: 'Aeonik';
+      src: local('Aeonik'), local('Aeonik-Regular');
+    }
+    text { font-family: 'Aeonik', 'Avenir Next', 'Calibri', sans-serif; }
+  </style>
+</defs>
+<rect x="0" y="0" width="61" height="96" fill="#263338"/>
+<rect x="0" y="0" width="4" height="96" fill="#2978FF"/>
+<defs>
+  <linearGradient id="glowP" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#2978FF" stop-opacity="0.08"/>
+    <stop offset="100%" stop-color="#2978FF" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="28" height="96" fill="url(#glowP)"/>
+<rect x="6" y="30.0" width="49" height="13" fill="#FFFFFF" opacity="0.06" rx="0.3"/>
+<rect x="6" y="47.5" width="49" height="8" fill="#FFFFFF" opacity="0.06" rx="0.3"/>
+<rect x="6" y="60.0" width="49" height="4.5" fill="#FFFFFF" opacity="0.06" rx="0.3"/>
+<rect x="6" y="69.0" width="49" height="2.5" fill="#FFFFFF" opacity="0.06" rx="0.3"/>
+<rect x="6" y="76.0" width="49" height="1.2" fill="#FFFFFF" opacity="0.06" rx="0.3"/>
+<g transform="translate(20,25) scale(0.046296296296296294,0.046296296296296294) translate(-300,-270)">
+<g transform="rotate(90, 540, 540)">
+<path d="M391.7,290h-74L462,540L317.7,790h74l113.2-196c19.3-33.4,19.3-74.5,0-107.9L391.7,290L391.7,290z" fill="#FFFFFF"/>
+<path d="M688.3,790h74L618,540l144.3-250h-74L575.1,486c-19.3,33.4-19.3,74.5,0,107.9L688.3,790L688.3,790z" fill="#FFFFFF"/>
+</g>
+</g><g transform="translate(13,57) scale(0.05238095238095239,0.05238095238095238) translate(-177,-100)">
+<rect x="177.56" y="102.75" width="24.31" height="97.25" fill="#FFFFFF"/>
+<polygon points="526.05 135.16 420.7 135.16 420.7 102.75 396.38 102.75 396.38 200 420.7 200 420.7 159.48 526.05 159.48 526.05 200 550.37 200 550.37 102.75 526.05 102.75 526.05 135.16" fill="#FFFFFF"/>
+<rect x="566.58" y="102.75" width="24.31" height="97.25" fill="#FFFFFF"/>
+<polygon points="902.44 200 846.29 102.75 820.81 102.75 818.4 102.75 792.92 102.75 736.77 200 764.66 200 819.63 102.75 874.54 200 902.44 200" fill="#FFFFFF"/>
+<path d="M216.85,150.47v1.8c0,26.36,21.37,47.73,47.73,47.73h115.6s0-20.71,0-20.71H245.17c-2.21,0-4-1.79-4-4v-47.9c0-2.21,1.79-4,4-4h135.01v-20.65h-115.6c-26.36,0-47.73,21.37-47.73,47.73Z" fill="#FFFFFF"/>
+<polygon points="607.1 102.75 607.1 123.46 671.93 123.46 671.93 200 696.25 200 696.25 123.46 761.08 123.46 761.08 102.75 607.1 102.75" fill="#FFFFFF"/>
+<polygon points="882.66 105.46 883.3 105.46 886.58 118.65 891.07 118.65 894.42 105.46 895.06 105.46 895.06 118.65 897.91 118.65 897.91 102.83 892.43 102.83 889.15 116.01 888.58 116.01 885.23 102.83 879.74 102.83 879.74 118.65 882.66 118.65 882.66 105.46" fill="#FFFFFF"/>
+<polygon points="869.41 118.65 872.33 118.65 872.33 105.46 877.6 105.46 877.6 102.83 864.06 102.83 864.06 105.46 869.41 105.46 869.41 118.65" fill="#FFFFFF"/>
+</g><text x="30.5" y="66" font-size="2.5" fill="#788F9C" letter-spacing="0.7" text-anchor="middle" font-weight="400">SEPARATION TECHNOLOGIES</text>
+<rect x="0" y="92" width="61" height="4" fill="#2978FF"/>
+<text x="30.5" y="88" font-size="2.8" fill="#2978FF" font-weight="500" text-anchor="middle" letter-spacing="0.15">ichita.co.th</text>
+<line x1="-5" y1="3" x2="0" y2="3" stroke="black" stroke-width="0.25"/>
+<line x1="3" y1="-5" x2="3" y2="0" stroke="black" stroke-width="0.25"/>
+<line x1="61" y1="3" x2="66" y2="3" stroke="black" stroke-width="0.25"/>
+<line x1="58" y1="-5" x2="58" y2="0" stroke="black" stroke-width="0.25"/>
+<line x1="-5" y1="93" x2="0" y2="93" stroke="black" stroke-width="0.25"/>
+<line x1="3" y1="96" x2="3" y2="101" stroke="black" stroke-width="0.25"/>
+<line x1="61" y1="93" x2="66" y2="93" stroke="black" stroke-width="0.25"/>
+<line x1="58" y1="96" x2="58" y2="101" stroke="black" stroke-width="0.25"/>
+</svg>

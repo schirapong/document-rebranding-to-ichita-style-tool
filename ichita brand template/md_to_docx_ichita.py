@@ -50,30 +50,39 @@ HEX_QUOTE_BG     = "EBF0F7"   # Blockquote background
 # ── Font Configuration ────────────────────────────────────────────────────────
 # Priority: Aeonik (brand) → Avenir Next (closest geometric match) → Calibri (fallback)
 
-BRAND_FONT = "Avenir Next"  # Closest system match to Aeonik
+BRAND_FONT = "Aeonik"       # Ichita brand font — embedded as name in OOXML; renders on any system with Aeonik installed
 THAI_FONT  = "Bai Jamjuree" # Thai font with matched metrics to geometric sans-serif
 THAI_SCALE = 0.9             # Thai 9pt / English 10pt — Bai Jamjuree one size down for visual balance
 MONO_FONT  = "Courier New"
 
-# Check system font dirs + bundled Aeonik-Essentials-Web for Aeonik
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_font_dirs = [
-    os.path.expanduser("~/Library/Fonts"),
-    "/Library/Fonts",
-    "/System/Library/Fonts",
-    os.path.expanduser("~/.local/share/fonts"),
-    os.path.join(_SCRIPT_DIR, "..", "Aeonik-Essentials-Web"),
-]
-for _fd in _font_dirs:
-    if os.path.isdir(_fd):
-        if any("aeonik" in f.lower() for f in os.listdir(_fd)):
-            BRAND_FONT = "Aeonik"
-            break
+# Detect Aeonik across all platforms (macOS, Linux, Windows)
+_aeonik_found = False
+for _font_dir in [
+    os.path.expanduser("~/Library/Fonts"),      # macOS user
+    "/Library/Fonts",                            # macOS system
+    "/System/Library/Fonts",                     # macOS core
+    os.path.expanduser("~/.local/share/fonts"),  # Linux user
+    "/usr/local/share/fonts",                    # Linux local
+    "/usr/share/fonts",                          # Linux system
+    os.path.join(os.environ.get("WINDIR", ""), "Fonts"),  # Windows
+]:
+    if os.path.isdir(_font_dir):
+        for _f in os.listdir(_font_dir):
+            if "aeonik" in _f.lower():
+                _aeonik_found = True
+                break
+    if _aeonik_found:
+        break
 
 # ── Logo Path ─────────────────────────────────────────────────────────────────
 # Logo-05: dark wordmark on white/transparent background — ideal for headers
-# Resolve relative to script location so it works from any working directory
-LOGO_PATH = os.path.join(_SCRIPT_DIR, "..", "assets", "Ichita_Logo-05.png")
+# Resolved relative to this script's directory so it works from any cwd
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_LOGO_CANDIDATES = [
+    os.path.join(_SCRIPT_DIR, "Ichita_Logo-05.png"),
+    os.path.join(_SCRIPT_DIR, "..", "document-rebranding-to-ichita-style-tool", "assets", "Ichita_Logo-05.png"),
+]
+LOGO_PATH = next((p for p in _LOGO_CANDIDATES if os.path.exists(p)), _LOGO_CANDIDATES[0])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -243,7 +252,7 @@ def add_code_block(doc, code_lines):
     code_text = '\n'.join(code_lines)
     run = p.add_run(code_text)
     run.font.name = MONO_FONT
-    run.font.size = Pt(8.5)
+    run.font.size = Pt(7)
     run.font.color.rgb = ICHITA_BLUE_GREY3
 
 
@@ -302,17 +311,9 @@ def add_table_from_rows(doc, header_cells, data_rows):
 
 
 def add_header_footer(doc, logo_path):
-    """Add ICHITA logo to header and branded footer to all sections.
-    First page has no header (to avoid duplicating the title logo)."""
+    """Add ICHITA logo to header and branded footer to all sections."""
     for section in doc.sections:
-        # Hide header on first page
-        section.different_first_page_header_footer = True
-        # Leave first-page header empty
-        first_header = section.first_page_header
-        for p in first_header.paragraphs:
-            p.clear()
-
-        # ── Header (pages 2+) ──
+        # ── Header ──
         header = section.header
         header.is_linked_to_previous = False
 
@@ -631,43 +632,6 @@ def convert_md_to_docx(input_path, output_path):
 
             p.clear()
             add_formatted_text(p, bullet_text)
-            i += 1
-            continue
-
-        # ── Image (![alt](path)) ──
-        img_match = re.match(r'^!\[([^\]]*)\]\(([^)]+)\)\s*$', stripped)
-        if img_match:
-            alt_text = img_match.group(1)
-            img_path = img_match.group(2)
-            # Resolve relative to the markdown file's directory
-            if not os.path.isabs(img_path):
-                img_path = os.path.join(os.path.dirname(os.path.abspath(input_path)), img_path)
-            if os.path.exists(img_path):
-                # Detect title-page logo (first image, logo filename)
-                is_title_logo = first_h1 and 'logo' in os.path.basename(img_path).lower()
-                p = doc.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                if is_title_logo:
-                    p.paragraph_format.space_before = Pt(40)
-                    p.paragraph_format.space_after = Pt(6)
-                    run = p.add_run()
-                    run.add_picture(img_path, width=Inches(3.0))
-                    first_h1 = False
-                    # Add decorative blue band below title logo
-                    add_title_page_band(doc)
-                else:
-                    p.paragraph_format.space_before = Pt(8)
-                    p.paragraph_format.space_after = Pt(4)
-                    run = p.add_run()
-                    run.add_picture(img_path, width=Inches(5.5))
-                # Add caption if alt text provided
-                if alt_text:
-                    cap = doc.add_paragraph()
-                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    cap.paragraph_format.space_before = Pt(2)
-                    cap.paragraph_format.space_after = Pt(8)
-                    _add_split_run(cap, alt_text, BRAND_FONT, Pt(8),
-                                   ICHITA_BLUE_GREY2, italic=True)
             i += 1
             continue
 

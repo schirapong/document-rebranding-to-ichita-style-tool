@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="96mm" height="61mm"
+     viewBox="0 0 96 61">
+<defs>
+  <style>
+    @font-face {
+      font-family: 'Aeonik';
+      src: local('Aeonik'), local('Aeonik-Regular');
+    }
+    text { font-family: 'Aeonik', 'Avenir Next', 'Calibri', sans-serif; }
+  </style>
+</defs>
+<rect x="0" y="0" width="96" height="61" fill="#FFFFFF"/>
+<rect x="0" y="57" width="96" height="4" fill="#2978FF"/>
+<g transform="translate(10,10) scale(0.04761904761904762,0.047619047619047616) translate(-177,-100)">
+<rect x="177.56" y="102.75" width="24.31" height="97.25" fill="#263338"/>
+<polygon points="526.05 135.16 420.7 135.16 420.7 102.75 396.38 102.75 396.38 200 420.7 200 420.7 159.48 526.05 159.48 526.05 200 550.37 200 550.37 102.75 526.05 102.75 526.05 135.16" fill="#263338"/>
+<rect x="566.58" y="102.75" width="24.31" height="97.25" fill="#263338"/>
+<polygon points="902.44 200 846.29 102.75 820.81 102.75 818.4 102.75 792.92 102.75 736.77 200 764.66 200 819.63 102.75 874.54 200 902.44 200" fill="#263338"/>
+<path d="M216.85,150.47v1.8c0,26.36,21.37,47.73,47.73,47.73h115.6s0-20.71,0-20.71H245.17c-2.21,0-4-1.79-4-4v-47.9c0-2.21,1.79-4,4-4h135.01v-20.65h-115.6c-26.36,0-47.73,21.37-47.73,47.73Z" fill="#263338"/>
+<polygon points="607.1 102.75 607.1 123.46 671.93 123.46 671.93 200 696.25 200 696.25 123.46 761.08 123.46 761.08 102.75 607.1 102.75" fill="#263338"/>
+<polygon points="882.66 105.46 883.3 105.46 886.58 118.65 891.07 118.65 894.42 105.46 895.06 105.46 895.06 118.65 897.91 118.65 897.91 102.83 892.43 102.83 889.15 116.01 888.58 116.01 885.23 102.83 879.74 102.83 879.74 118.65 882.66 118.65 882.66 105.46" fill="#263338"/>
+<polygon points="869.41 118.65 872.33 118.65 872.33 105.46 877.6 105.46 877.6 102.83 864.06 102.83 864.06 105.46 869.41 105.46 869.41 118.65" fill="#263338"/>
+</g><g transform="translate(66,8.5) scale(0.007407407407407407,0.007407407407407408) translate(-300,-270)">
+<g transform="rotate(90, 540, 540)">
+<path d="M391.7,290h-74L462,540L317.7,790h74l113.2-196c19.3-33.4,19.3-74.5,0-107.9L391.7,290L391.7,290z" fill="#2978FF"/>
+<path d="M688.3,790h74L618,540l144.3-250h-74L575.1,486c-19.3,33.4-19.3,74.5,0,107.9L688.3,790L688.3,790z" fill="#2978FF"/>
+</g>
+</g><text x="70" y="12" font-size="3" fill="#788F9C" letter-spacing="0.3" font-weight="500">SEPARATION TECHNOLOGIES</text>
+<text x="10" y="28" font-size="5.5" font-weight="600" fill="#263338" letter-spacing="0.1">Chirapong Sakullachat</text>
+<text x="10" y="33" font-size="4.5" font-weight="500" fill="#788F9C">จิรพงษ์ สกุลชาติ</text>
+<text x="10" y="37.5" font-size="3.2" fill="#788F9C" letter-spacing="0.2" text-transform="uppercase">CHIEF EXECUTIVE OFFICER</text>
+<text x="10" y="41" font-size="3.2" fill="#788F9C">ประธานเจ้าหน้าที่บริหาร</text>
+<line x1="10" y1="43" x2="18" y2="43" stroke="#2978FF" stroke-width="0.3" opacity="0.5"/>
+<text x="10" y="47" font-size="3.2" fill="#263338"><tspan fill="#2978FF" font-weight="600" letter-spacing="0.2">E</tspan>   chirapong@srithepgroup.com</text>
+<text x="10" y="51" font-size="3.2" fill="#263338"><tspan fill="#2978FF" font-weight="600" letter-spacing="0.2">T</tspan>   +66 81 841 7210</text>
+<text x="10" y="55" font-size="3.2" fill="#263338"><tspan fill="#2978FF" font-weight="600" letter-spacing="0.2">W</tspan>   ichita.co.th</text>
+<text x="86" y="47" font-size="2.8" fill="#788F9C" text-anchor="end">399/75 Prachachuen Rd., Soi Pongpetchnivet,</text>
+<text x="86" y="50.2" font-size="2.8" fill="#788F9C" text-anchor="end">Jatujak, Bangkok 10900, Thailand</text>
+<line x1="58" y1="52" x2="86" y2="52" stroke="#CFD9DB" stroke-width="0.2" opacity="0.6"/>
+<text x="86" y="54.5" font-size="3.2" fill="#788F9C" text-anchor="end">399/75 ซอยพงษ์เพชรนิเวศน์ ถนนประชาชื่น</text>
+<text x="86" y="57.7" font-size="3.2" fill="#788F9C" text-anchor="end">เขตจตุจักร กรุงเทพฯ 10900</text>
+<line x1="-5" y1="3" x2="0" y2="3" stroke="black" stroke-width="0.25"/>
+<line x1="3" y1="-5" x2="3" y2="0" stroke="black" stroke-width="0.25"/>
+<line x1="96" y1="3" x2="101" y2="3" stroke="black" stroke-width="0.25"/>
+<line x1="93" y1="-5" x2="93" y2="0" stroke="black" stroke-width="0.25"/>
+<line x1="-5" y1="58" x2="0" y2="58" stroke="black" stroke-width="0.25"/>
+<line x1="3" y1="61" x2="3" y2="66" stroke="black" stroke-width="0.25"/>
+<line x1="96" y1="58" x2="101" y2="58" stroke="black" stroke-width="0.25"/>
+<line x1="93" y1="61" x2="93" y2="66" stroke="black" stroke-width="0.25"/>
+</svg>
